@@ -1,6 +1,6 @@
-# t4morley-auto
+# t4auto
 
-Automation tools for T4 Morley
+Automation tools for T4.
 
 ## Run as Python script
 
