@@ -62,12 +62,12 @@ class T4AutoGUI(QWidget):
         # Take items offline group / table
         self.table = QTableWidget()
         self.draw_table_header()
-        self.add_a_row()
+        self.add_row()
         self.take_offline_layout.addWidget(self.table, 0, 0, 1, 3)
 
         self.add_row_button = QPushButton('Add a row')
         self.add_row_button.setIcon(QtGui.QIcon('icons/add_box_FILL0_wght400_GRAD0_opsz24.svg'))
-        self.add_row_button.clicked.connect(self.add_a_row)
+        self.add_row_button.clicked.connect(self.add_row)
         self.take_offline_layout.addWidget(self.add_row_button, 1, 0)
         self.start_automation = QPushButton('Start taking items offline')
         self.start_automation.setIcon(QtGui.QIcon('icons/play_circle_FILL0_wght400_GRAD0_opsz24.svg'))
@@ -101,7 +101,7 @@ class T4AutoGUI(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.DELETE, QHeaderView.ResizeMode.ResizeToContents)
 
     @Slot()
-    def add_a_row(self):
+    def add_row(self):
         row_idx = self.table.rowCount()
         self.table.insertRow(row_idx)
 
@@ -116,11 +116,11 @@ class T4AutoGUI(QWidget):
         self.table.setCellWidget(row_idx, ColumnIdx.END, end_time)
 
         delete_button = QPushButton('Delete')
-        delete_button.clicked.connect(self.del_a_row)
+        delete_button.clicked.connect(self.del_row)
         self.table.setCellWidget(row_idx, ColumnIdx.DELETE, delete_button)
 
     @Slot()
-    def del_a_row(self):
+    def del_row(self):
         self.table.removeRow(self.table.currentRow())
 
 
