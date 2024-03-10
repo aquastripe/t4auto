@@ -4,7 +4,8 @@ from enum import IntEnum
 from PySide6 import QtGui
 from PySide6.QtCore import Slot, Qt
 from PySide6.QtWidgets import QApplication, QGroupBox, QWidget, QLineEdit, QGridLayout, \
-    QTableWidget, QFormLayout, QPushButton, QHeaderView, QDateTimeEdit, QVBoxLayout, QRadioButton, QCheckBox
+    QTableWidget, QFormLayout, QPushButton, QHeaderView, QDateTimeEdit, QVBoxLayout, QRadioButton, QCheckBox, \
+    QHBoxLayout
 
 
 class ColumnIdx(IntEnum):
@@ -26,15 +27,21 @@ class T4AutoGUI(QWidget):
         self.login_group = QGroupBox('Login info')
         self.login_group.setLayout(self.login_layout)
 
+        # Login group / username, password
         self.username_edit = QLineEdit()
         self.password_edit = QLineEdit()
         self.password_edit.setEchoMode(QLineEdit.EchoMode.Password)
-        self.display_password = QCheckBox('Show password')
-        self.display_password.stateChanged.connect(self.show_password)
-
         self.login_layout.addRow('Username', self.username_edit)
         self.login_layout.addRow('Password', self.password_edit)
-        self.login_layout.addWidget(self.display_password)
+
+        # Login group / save username, show password
+        self.checkbox_layout = QHBoxLayout()
+        self.save_username = QCheckBox('Save username')
+        self.checkbox_layout.addWidget(self.save_username)
+        self.display_password = QCheckBox('Show password')
+        self.display_password.stateChanged.connect(self.show_password)
+        self.checkbox_layout.addWidget(self.display_password)
+        self.login_layout.addRow(self.checkbox_layout)
 
         # Browser group
         self.browser_layout = QVBoxLayout()
@@ -52,6 +59,7 @@ class T4AutoGUI(QWidget):
         self.take_offline_group = QGroupBox('Take items offline')
         self.take_offline_group.setLayout(self.take_offline_layout)
 
+        # Take items offline group / table
         self.table = QTableWidget()
         self.draw_table_header()
         self.add_a_row()
