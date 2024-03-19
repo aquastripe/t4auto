@@ -1,9 +1,11 @@
-import argparse
 import getpass
+import heapq
 import logging
 from dataclasses import dataclass
+from datetime import datetime
+from threading import Event
+from typing import List
 
-import pandas as pd
 from selenium import webdriver
 from selenium.common import TimeoutException
 from selenium.webdriver import ActionChains, Keys
@@ -24,6 +26,7 @@ class XPath:
                  'table/tbody/tr[3]/td[1]/span/span[1]/input')
     PLU_TEXT = ('/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[1]/div[1]/div[2]/div/div/div/'
                 'table/tbody/tr[3]/td[2]')
+    SEARCH_BAR = '/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[1]/div[1]/div[1]/div/div[3]/div/input'
 
     LOCATION = '/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[2]/div/div'
     OPTION_T4_MORLEY = '/html/body/div[4]/div[3]/ul/li[2]'
@@ -44,19 +47,40 @@ class URL:
     RULES_PAGE = 'https://t4australia.redcatcloud.com.au/admin2/item-availability-rules/rule'
 
 
+@dataclass
+class ItemRow:
+    location: str
+    keyword: str
+    start_time: datetime
+    end_time: datetime
+    reason: str
+
+
+@dataclass
+class UserInfo:
+    username: str
+    password: str
+
+
 class Agent:
 
-    def __init__(self):
+    def __init__(self, item_row_list: List[ItemRow]):
+        self.item_row_list = item_row_list
+
+    def create_browser_session(self):
         self.driver = webdriver.Chrome()
         self.driver.maximize_window()
+
+    def destroy_browser_session(self):
+        self.driver.quit()
+
+    def login(self, user_info: UserInfo):
         self.driver.get(URL.LOGIN_PAGE)
 
-    def login(self):
         is_login = False
-
         while not is_login:
-            username = input('Username: ')
-            password = getpass.getpass()
+            username = user_info.username
+            password = user_info.password
 
             username_box = self.driver.find_element(By.ID, 'username')
             username_box.clear()
@@ -129,26 +153,67 @@ class Agent:
 
         logging.info(f'PLU: {plu} was checked and saved.')
 
+    def update_rules_by_search(self, item: ItemRow):
+        self.driver.get(URL.RULES_PAGE)
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('offline_items', nargs='?', default='offline_items.csv', type=str,
-                        help='The file name of a CSV file contains the items to be taken offline.')
-    args = parser.parse_args()
+        # Select the search bar
+        WebDriverWait(self.driver, 5).until(
+            EC.presence_of_element_located((By.XPATH, XPath.SEARCH_BAR))
+        )
+        search_bar = self.driver.find_element(By.XPATH, XPath.SEARCH_BAR)
+        search_bar.send_keys(item.keyword)
 
-    logging.basicConfig(filename='take_items_offline_log.txt', level=logging.INFO, format='[%(asctime)s] %(message)s',
-                        datefmt='%Y-%m-%d %H:%M:%S')
+        # TODO: Check all items
 
-    agent = Agent()
-    agent.login()
+        # Click the location
+        WebDriverWait(self.driver, 5).until(
+            EC.presence_of_element_located((By.XPATH, XPath.LOCATION))
+        )
+        location = self.driver.find_element(By.XPATH, XPath.LOCATION)
+        location.click()
 
-    df = pd.read_csv(args.offline_items)
-    for plu in df['PLU']:
-        agent.update_rules(plu)
+        # TODO: Select by the location
+        WebDriverWait(self.driver, 5).until(
+            EC.presence_of_element_located((By.XPATH, XPath.OPTION_T4_MORLEY))
+        )
+        option = self.driver.find_element(By.XPATH, XPath.OPTION_T4_MORLEY)
+        option.click()
+        option.send_keys(Keys.TAB)
 
-    agent.driver.quit()
-    logging.info('Done.')
+        actions = ActionChains(self.driver).send_keys(Keys.TAB * 4)
+        actions.perform()
 
+        # Enter the reason
+        WebDriverWait(self.driver, 5).until(
+            EC.element_to_be_clickable((By.XPATH, XPath.REASON_BUTTON))
+        )
+        reason_button = self.driver.find_element(By.XPATH, XPath.REASON_BUTTON)
+        reason_button.click()
+        WebDriverWait(self.driver, 5).until(
+            EC.presence_of_element_located((By.XPATH, XPath.OPTION_CUSTOM_BUTTON))
+        )
+        reason_option = self.driver.find_element(By.XPATH, XPath.OPTION_CUSTOM_BUTTON)
+        reason_option.click()
+        reason_text = self.driver.find_element(By.XPATH, XPath.REASON_TEXT)
+        reason = item.reason if item.reason else 'Deleted by t4auto'
+        reason_text.send_keys(reason)
 
-if __name__ == '__main__':
-    main()
+        save_button = self.driver.find_element(By.XPATH, XPath.SAVE_BUTTON)
+        save_button.click()
+
+        logging.info(f'{item.keyword} was checked and saved.')
+
+    def update_rules_loop(self):
+        now = datetime.now()
+        event_queue = [((item_row.start_time - now).seconds, item_row) for item_row in self.item_row_list]
+        heapq.heapify(event_queue)
+        stop = Event()
+        while not stop.is_set():
+            now = datetime.now()
+            _, item_row = heapq.heappop(event_queue)
+            if now < item_row.start_time:
+                stop.wait((item_row.start_time - now).seconds)
+
+            self.create_browser_session()
+            self.update_rules_by_search(item_row)
+            self.destroy_browser_session()
