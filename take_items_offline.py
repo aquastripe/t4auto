@@ -1,4 +1,3 @@
-import getpass
 import heapq
 import logging
 from dataclasses import dataclass
@@ -66,6 +65,13 @@ class Agent:
 
     def __init__(self, item_row_list: List[ItemRow]):
         self.item_row_list = item_row_list
+
+    def __enter__(self):
+        self.create_browser_session()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.destroy_browser_session()
 
     def create_browser_session(self):
         self.driver = webdriver.Chrome()
@@ -214,6 +220,4 @@ class Agent:
             if now < item_row.start_time:
                 stop.wait((item_row.start_time - now).seconds)
 
-            self.create_browser_session()
             self.update_rules_by_search(item_row)
-            self.destroy_browser_session()
