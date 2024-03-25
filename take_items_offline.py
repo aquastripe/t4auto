@@ -1,7 +1,7 @@
 import heapq
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from threading import Event
 from typing import List
 
@@ -189,6 +189,10 @@ class Agent:
         actions = ActionChains(self.driver).send_keys(Keys.TAB * 4)
         actions.perform()
 
+        end_date = self.driver.find_element(By.XPATH, XPath.END_DATE)
+        date_ddmmyyyy = datetime.now().strftime('%d%m%Y')
+        end_date.send_keys(date_ddmmyyyy)
+
         # Enter the reason
         WebDriverWait(self.driver, 5).until(
             EC.element_to_be_clickable((By.XPATH, XPath.REASON_BUTTON))
@@ -213,11 +217,16 @@ class Agent:
         now = datetime.now()
         event_queue = [((item_row.start_time - now).seconds, item_row) for item_row in self.item_row_list]
         heapq.heapify(event_queue)
-        stop = Event()
-        while not stop.is_set():
-            now = datetime.now()
+        stop_event = Event()
+        stop = stop_event.is_set()
+        while not stop:
             _, item_row = heapq.heappop(event_queue)
+            now = datetime.now()
             if now < item_row.start_time:
-                stop.wait((item_row.start_time - now).seconds)
+                stop = stop_event.wait((item_row.start_time - now).seconds)
 
-            self.update_rules_by_search(item_row)
+            if not stop:
+                self.update_rules_by_search(item_row)
+                item_row.start_time += timedelta(days=1)
+                now = datetime.now()
+                heapq.heappush(event_queue, ((item_row.start_time - now).seconds, item_row))
