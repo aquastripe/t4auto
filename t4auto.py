@@ -1,24 +1,28 @@
 import sys
+from datetime import datetime
 from enum import IntEnum
 
 from PySide6 import QtGui
-from PySide6.QtCore import Slot, Qt
+from PySide6.QtCore import Slot, Qt, QDate
 from PySide6.QtWidgets import QApplication, QGroupBox, QWidget, QLineEdit, QGridLayout, \
     QTableWidget, QFormLayout, QPushButton, QHeaderView, QDateTimeEdit, QVBoxLayout, QRadioButton, QCheckBox, \
     QHBoxLayout
 
+from take_items_offline import ItemRow, UserInfo, Agent
+
 
 class ColumnIdx(IntEnum):
     LOCATION = 0
-    SEARCH = 1
+    KEYWORD = 1
     START = 2
-    END = 3
-    REASON = 4
-    DELETE = 5
+    REASON = 3
+    DELETE = 4
 
 
 class T4AutoGUI(QWidget):
-    COLUMN_NAMES = ['Location', 'Search item by keyword', 'Start time', 'End time', 'Reason', 'Delete the row']
+    COLUMN_NAMES = ['Location', 'Search item by keyword', 'Start time', 'Reason', 'Delete the row']
+
+    # COLUMN_NAMES = ['Location', 'Search item by keyword', 'Start time', 'End time', 'Reason', 'Delete the row']
 
     def __init__(self):
         super().__init__()
@@ -69,12 +73,15 @@ class T4AutoGUI(QWidget):
         self.add_row_button.setIcon(QtGui.QIcon('icons/add_box_FILL0_wght400_GRAD0_opsz24.svg'))
         self.add_row_button.clicked.connect(self.add_row)
         self.take_offline_layout.addWidget(self.add_row_button, 1, 0)
-        self.start_automation = QPushButton('Start taking items offline')
-        self.start_automation.setIcon(QtGui.QIcon('icons/play_circle_FILL0_wght400_GRAD0_opsz24.svg'))
-        self.take_offline_layout.addWidget(self.start_automation, 1, 1)
-        self.stop_automation = QPushButton('Stop')
-        self.stop_automation.setIcon(QtGui.QIcon('icons/stop_circle_FILL0_wght400_GRAD0_opsz24.svg'))
-        self.take_offline_layout.addWidget(self.stop_automation, 1, 2)
+
+        self.start_automation_button = QPushButton('Start taking items offline')
+        self.start_automation_button.setIcon(QtGui.QIcon('icons/play_circle_FILL0_wght400_GRAD0_opsz24.svg'))
+        self.start_automation_button.clicked.connect(self.start_automation)
+        self.take_offline_layout.addWidget(self.start_automation_button, 1, 1)
+
+        self.stop_automation_button = QPushButton('Stop')
+        self.stop_automation_button.setIcon(QtGui.QIcon('icons/stop_circle_FILL0_wght400_GRAD0_opsz24.svg'))
+        self.take_offline_layout.addWidget(self.stop_automation_button, 1, 2)
 
         # Compose all groups
         self.main_layout = QGridLayout()
@@ -82,6 +89,8 @@ class T4AutoGUI(QWidget):
         self.main_layout.addWidget(self.browser_group, 0, 1)
         self.main_layout.addWidget(self.take_offline_group, 1, 0, 1, 2)
         self.setLayout(self.main_layout)
+
+        self.agent = Agent()
 
     @Slot(int)
     def show_password(self, state):
@@ -94,9 +103,8 @@ class T4AutoGUI(QWidget):
         self.table.setColumnCount(len(self.COLUMN_NAMES))
         self.table.setHorizontalHeaderLabels(self.COLUMN_NAMES)
         self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.LOCATION, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.SEARCH, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.KEYWORD, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.START, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.END, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.REASON, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.DELETE, QHeaderView.ResizeMode.ResizeToContents)
 
@@ -105,15 +113,10 @@ class T4AutoGUI(QWidget):
         row_idx = self.table.rowCount()
         self.table.insertRow(row_idx)
 
-        start_time = QDateTimeEdit()
+        start_time = QDateTimeEdit(QDate.currentDate())
         start_time.setDisplayFormat('hh:mm')
         start_time.setFrame(False)
         self.table.setCellWidget(row_idx, ColumnIdx.START, start_time)
-
-        end_time = QDateTimeEdit()
-        end_time.setDisplayFormat('hh:mm')
-        end_time.setFrame(False)
-        self.table.setCellWidget(row_idx, ColumnIdx.END, end_time)
 
         delete_button = QPushButton('Delete')
         delete_button.clicked.connect(self.del_row)
@@ -122,6 +125,42 @@ class T4AutoGUI(QWidget):
     @Slot()
     def del_row(self):
         self.table.removeRow(self.table.currentRow())
+
+    @Slot()
+    def start_automation(self):
+        item_row_list = []
+        for row_idx in range(self.table.rowCount()):
+            start_time = self.table.cellWidget(row_idx, ColumnIdx.START).dateTime().toPython()  # type: datetime
+            now = datetime.now()
+            today = dict(
+                year=now.year,
+                month=now.month,
+                day=now.day
+            )
+            start_time.replace(**today)
+            location = self.table.item(row_idx, ColumnIdx.LOCATION).text() \
+                if self.table.item(row_idx, ColumnIdx.LOCATION) else ''
+            keyword = self.table.item(row_idx, ColumnIdx.KEYWORD).text() \
+                if self.table.item(row_idx, ColumnIdx.KEYWORD) else ''
+            reason = self.table.item(row_idx, ColumnIdx.REASON).text() \
+                if self.table.item(row_idx, ColumnIdx.REASON) else ''
+            item_row = ItemRow(
+                location=location,
+                keyword=keyword,
+                start_time=start_time,
+                reason=reason,
+            )
+            item_row_list.append(item_row)
+
+        self.agent.create_browser_session()
+        self.agent.login(UserInfo(self.username_edit.text(), self.password_edit.text()))
+        self.agent.update_rules_loop(item_row_list)
+
+    @Slot()
+    def stop_automation(self):
+        if self.agent.session_is_started:
+            self.agent.stop()
+            self.agent.destroy_browser_session()
 
 
 def main():

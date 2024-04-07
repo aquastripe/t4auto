@@ -1,5 +1,6 @@
 import heapq
 import logging
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from threading import Event
@@ -23,6 +24,7 @@ class XPath:
                   'table/tbody/tr[1]/td[2]/div/div/input')
     CHECK_BOX = ('/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[1]/div[1]/div[2]/div/div/div/'
                  'table/tbody/tr[3]/td[1]/span/span[1]/input')
+
     PLU_TEXT = ('/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[1]/div[1]/div[2]/div/div/div/'
                 'table/tbody/tr[3]/td[2]')
     SEARCH_BAR = '/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[1]/div[1]/div[1]/div/div[3]/div/input'
@@ -38,6 +40,16 @@ class XPath:
 
     SAVE_BUTTON = '/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[7]/div[2]/div/button'
 
+    NEXT_PAGE_BUTTON = ('/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[1]/div[1]/'
+                        'table/tfoot/tr/td/div/div[3]/span[4]/button')
+
+
+@dataclass
+class Selector:
+    CHECKBOXES = ('#root > div > div.Screen > div.InnerContainer > div > div > form > div:nth-child(1) '
+                  '> div.MuiPaper-root.MuiPaper-elevation2.MuiPaper-rounded > div.jss34 > div > div > '
+                  'div > table > tbody input[type="checkbox"]')
+
 
 @dataclass
 class URL:
@@ -51,7 +63,6 @@ class ItemRow:
     location: str
     keyword: str
     start_time: datetime
-    end_time: datetime
     reason: str
 
 
@@ -63,22 +74,18 @@ class UserInfo:
 
 class Agent:
 
-    def __init__(self, item_row_list: List[ItemRow]):
-        self.item_row_list = item_row_list
-
-    def __enter__(self):
-        self.create_browser_session()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.destroy_browser_session()
+    def __init__(self):
+        self.session_is_started = False
 
     def create_browser_session(self):
         self.driver = webdriver.Chrome()
         self.driver.maximize_window()
+        self.stop_event = Event()
+        self.session_is_started = True
 
     def destroy_browser_session(self):
         self.driver.quit()
+        self.session_is_started = False
 
     def login(self, user_info: UserInfo):
         self.driver.get(URL.LOGIN_PAGE)
@@ -169,7 +176,16 @@ class Agent:
         search_bar = self.driver.find_element(By.XPATH, XPath.SEARCH_BAR)
         search_bar.send_keys(item.keyword)
 
-        # TODO: Check all items
+        time.sleep(5)
+        while len(checkboxes := self.driver.find_elements(By.CSS_SELECTOR, Selector.CHECKBOXES)) != 0:
+            for checkbox in checkboxes:
+                checkbox.click()
+
+            next_page_button = self.driver.find_element(By.XPATH, XPath.NEXT_PAGE_BUTTON)
+            if next_page_button.is_enabled():
+                next_page_button.click()
+            else:
+                break
 
         # Click the location
         WebDriverWait(self.driver, 5).until(
@@ -188,10 +204,6 @@ class Agent:
 
         actions = ActionChains(self.driver).send_keys(Keys.TAB * 4)
         actions.perform()
-
-        end_date = self.driver.find_element(By.XPATH, XPath.END_DATE)
-        date_ddmmyyyy = datetime.now().strftime('%d%m%Y')
-        end_date.send_keys(date_ddmmyyyy)
 
         # Enter the reason
         WebDriverWait(self.driver, 5).until(
@@ -213,20 +225,23 @@ class Agent:
 
         logging.info(f'{item.keyword} was checked and saved.')
 
-    def update_rules_loop(self):
+    def update_rules_loop(self, item_row_list):
         now = datetime.now()
-        event_queue = [((item_row.start_time - now).seconds, item_row) for item_row in self.item_row_list]
+        event_queue = [((item_row.start_time - now).seconds, item_row) for item_row in item_row_list]
         heapq.heapify(event_queue)
-        stop_event = Event()
-        stop = stop_event.is_set()
-        while not stop:
+
+        stop = self.stop_event.is_set()
+        while not self.stop_event.is_set():
             _, item_row = heapq.heappop(event_queue)
             now = datetime.now()
             if now < item_row.start_time:
-                stop = stop_event.wait((item_row.start_time - now).seconds)
+                stop = self.stop_event.wait((item_row.start_time - now).seconds)
 
             if not stop:
                 self.update_rules_by_search(item_row)
                 item_row.start_time += timedelta(days=1)
                 now = datetime.now()
                 heapq.heappush(event_queue, ((item_row.start_time - now).seconds, item_row))
+
+    def stop(self):
+        self.stop_event.set()
