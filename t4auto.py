@@ -40,6 +40,7 @@ class T4AutoGUI(QWidget):
         # Login group / save username, show password
         self.checkbox_layout = QHBoxLayout()
         self.save_username = QCheckBox('Save username')
+        self.save_username.setEnabled(False)  # TODO: future feature
         self.checkbox_layout.addWidget(self.save_username)
         self.display_password = QCheckBox('Show password')
         self.display_password.stateChanged.connect(self.show_password)
@@ -48,11 +49,16 @@ class T4AutoGUI(QWidget):
 
         # Browser group
         self.browser_layout = QVBoxLayout()
-        first_radio_button = QRadioButton('Chrome')
-        first_radio_button.click()
-        self.browser_layout.addWidget(first_radio_button)
-        self.browser_layout.addWidget(QRadioButton('Edge'))
-        self.browser_layout.addWidget(QRadioButton('Firefox'))
+        chrome_button = QRadioButton('Chrome')
+        chrome_button.click()
+        chrome_button.setEnabled(False)  # TODO: future feature
+        self.browser_layout.addWidget(chrome_button)
+        edge_button = QRadioButton('Edge')
+        edge_button.setEnabled(False)
+        self.browser_layout.addWidget(edge_button)
+        firefox_button = QRadioButton('Firefox')
+        firefox_button.setEnabled(False)
+        self.browser_layout.addWidget(firefox_button)
         self.browser_group = QGroupBox('Browser')
         self.browser_group.setLayout(self.browser_layout)
 
