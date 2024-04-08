@@ -30,7 +30,7 @@ class XPath:
     SEARCH_BAR = '/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[1]/div[1]/div[1]/div/div[3]/div/input'
 
     LOCATION = '/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[2]/div/div'
-    OPTION_T4_MORLEY = '/html/body/div[4]/div[3]/ul/li[2]'
+    LOCATION_FIRST_OPTION = '/html/body/div[4]/div[3]/ul/li[2]'
 
     END_DATE = '/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[3]/div/input'
 
@@ -138,9 +138,9 @@ class Agent:
         location.click()
 
         WebDriverWait(self.driver, 5).until(
-            EC.presence_of_element_located((By.XPATH, XPath.OPTION_T4_MORLEY))
+            EC.presence_of_element_located((By.XPATH, XPath.LOCATION_FIRST_OPTION))
         )
-        option = self.driver.find_element(By.XPATH, XPath.OPTION_T4_MORLEY)
+        option = self.driver.find_element(By.XPATH, XPath.LOCATION_FIRST_OPTION)
         option.click()
         option.send_keys(Keys.TAB)
 
@@ -196,9 +196,9 @@ class Agent:
 
         # TODO: Select by the location
         WebDriverWait(self.driver, 5).until(
-            EC.presence_of_element_located((By.XPATH, XPath.OPTION_T4_MORLEY))
+            EC.presence_of_element_located((By.XPATH, XPath.LOCATION_FIRST_OPTION))
         )
-        option = self.driver.find_element(By.XPATH, XPath.OPTION_T4_MORLEY)
+        option = self.driver.find_element(By.XPATH, XPath.LOCATION_FIRST_OPTION)
         option.click()
         option.send_keys(Keys.TAB)
 
