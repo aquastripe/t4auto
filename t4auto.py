@@ -135,6 +135,16 @@ class T4AutoGUI(QWidget):
 
     @Slot()
     def start_automation(self):
+        item_row_list = self._collect_item_row_list_from_table()
+        user_info = UserInfo(self.username_edit.text(), self.password_edit.text())
+
+        thread = Thread(target=start_automation, args=(self.agent, user_info, item_row_list))
+        thread.start()
+
+        self.start_automation_button.setEnabled(False)
+        self.stop_automation_button.setEnabled(True)
+
+    def _collect_item_row_list_from_table(self):
         item_row_list = []
         for row_idx in range(self.table.rowCount()):
             start_time = self.table.cellWidget(row_idx, ColumnIdx.START).dateTime().toPython()  # type: datetime
@@ -158,13 +168,7 @@ class T4AutoGUI(QWidget):
                 reason=reason,
             )
             item_row_list.append(item_row)
-
-        user_info = UserInfo(self.username_edit.text(), self.password_edit.text())
-
-        thread = Thread(target=start_automation, args=(self.agent, user_info, item_row_list))
-        thread.start()
-        self.start_automation_button.setEnabled(False)
-        self.stop_automation_button.setEnabled(True)
+        return item_row_list
 
     @Slot()
     def stop_automation(self):
