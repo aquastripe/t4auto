@@ -81,6 +81,7 @@ class T4AutoGUI(QWidget):
         self.stop_automation_button = QPushButton('Stop')
         self.stop_automation_button.setIcon(QtGui.QIcon('icons/stop_circle_FILL0_wght400_GRAD0_opsz24.svg'))
         self.stop_automation_button.clicked.connect(self.stop_automation)
+        self.stop_automation_button.setEnabled(False)
         self.take_offline_layout.addWidget(self.stop_automation_button, 1, 2)
 
         # Compose all groups
@@ -156,9 +157,13 @@ class T4AutoGUI(QWidget):
 
         thread = Thread(target=start_automation, args=(self.agent, user_info, item_row_list))
         thread.start()
+        self.start_automation_button.setEnabled(False)
+        self.stop_automation_button.setEnabled(True)
 
     @Slot()
     def stop_automation(self):
+        self.start_automation_button.setEnabled(True)
+        self.stop_automation_button.setEnabled(False)
         stop_automation(self.agent)
 
 
