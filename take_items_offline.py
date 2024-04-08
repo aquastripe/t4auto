@@ -60,10 +60,17 @@ class URL:
 
 @dataclass
 class ItemRow:
+    row_idx: int
     location: str
     keyword: str
     start_time: datetime
     reason: str
+
+    def __lt__(self, other):
+        return self.row_idx < other.row_idx
+
+    def __eq__(self, other):
+        return self.row_idx == other.row_idx
 
 
 @dataclass
@@ -202,8 +209,15 @@ class Agent:
         option.click()
         option.send_keys(Keys.TAB)
 
-        actions = ActionChains(self.driver).send_keys(Keys.TAB * 4)
+        actions = ActionChains(self.driver).send_keys(Keys.TAB * 2)
         actions.perform()
+
+        WebDriverWait(self.driver, 5).until(
+            EC.element_to_be_clickable((By.XPATH, XPath.END_DATE))
+        )
+        end_date = self.driver.find_element(By.XPATH, XPath.END_DATE)
+        today = datetime.today().strftime('%d%m%Y')
+        end_date.send_keys(today)
 
         # Enter the reason
         WebDriverWait(self.driver, 5).until(
