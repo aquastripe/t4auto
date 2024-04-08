@@ -1,4 +1,5 @@
 import sys
+from threading import Thread
 from datetime import datetime
 from enum import IntEnum
 
@@ -21,8 +22,6 @@ class ColumnIdx(IntEnum):
 
 class T4AutoGUI(QWidget):
     COLUMN_NAMES = ['Location', 'Search item by keyword', 'Start time', 'Reason', 'Delete the row']
-
-    # COLUMN_NAMES = ['Location', 'Search item by keyword', 'Start time', 'End time', 'Reason', 'Delete the row']
 
     def __init__(self):
         super().__init__()
@@ -81,6 +80,7 @@ class T4AutoGUI(QWidget):
 
         self.stop_automation_button = QPushButton('Stop')
         self.stop_automation_button.setIcon(QtGui.QIcon('icons/stop_circle_FILL0_wght400_GRAD0_opsz24.svg'))
+        self.stop_automation_button.clicked.connect(self.stop_automation)
         self.take_offline_layout.addWidget(self.stop_automation_button, 1, 2)
 
         # Compose all groups
@@ -152,15 +152,26 @@ class T4AutoGUI(QWidget):
             )
             item_row_list.append(item_row)
 
-        self.agent.create_browser_session()
-        self.agent.login(UserInfo(self.username_edit.text(), self.password_edit.text()))
-        self.agent.update_rules_loop(item_row_list)
+        user_info = UserInfo(self.username_edit.text(), self.password_edit.text())
+
+        thread = Thread(target=start_automation, args=(self.agent, user_info, item_row_list))
+        thread.start()
 
     @Slot()
     def stop_automation(self):
-        if self.agent.session_is_started:
-            self.agent.stop()
-            self.agent.destroy_browser_session()
+        stop_automation(self.agent)
+
+
+def start_automation(agent: Agent, user_info: UserInfo, item_row_list: list):
+    agent.create_browser_session()
+    agent.login(user_info)
+    agent.update_rules_loop(item_row_list)
+
+
+def stop_automation(agent: Agent):
+    if agent.session_is_started:
+        agent.stop()
+        agent.destroy_browser_session()
 
 
 def main():
