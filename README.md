@@ -9,17 +9,14 @@ Automation tools for T4.
 #### Install Dependency Packages
 
 ```
-pip install selenium pandas
+pip install selenium pandas pyside6
 ```
 
 ### Usage
 
 ```
-python take_items_offline.py [offline_items.csv]
+python t4auto.py
 ```
-
-- `offline_items.csv`: The filename of a CSV file contains the items to be taken offline.
-    If not specified, the default filename is `offline_items.csv`.
 
 
 ## License
