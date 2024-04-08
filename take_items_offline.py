@@ -67,10 +67,10 @@ class ItemRow:
     reason: str
 
     def __lt__(self, other):
-        return self.row_idx < other.row_idx
+        return (self.start_time, self.row_idx) < (other.start_time, other.row_idx)
 
     def __eq__(self, other):
-        return self.row_idx == other.row_idx
+        return (self.start_time, self.row_idx) == (other.start_time, other.row_idx)
 
 
 @dataclass
@@ -219,6 +219,9 @@ class Agent:
         today = datetime.today().strftime('%d%m%Y')
         end_date.send_keys(today)
 
+        actions = ActionChains(self.driver).send_keys(Keys.TAB * 2)
+        actions.perform()
+
         # Enter the reason
         WebDriverWait(self.driver, 5).until(
             EC.element_to_be_clickable((By.XPATH, XPath.REASON_BUTTON))
@@ -240,13 +243,12 @@ class Agent:
         logging.info(f'{item.keyword} was checked and saved.')
 
     def update_rules_loop(self, item_row_list):
-        now = datetime.now()
-        event_queue = [((item_row.start_time - now).seconds, item_row) for item_row in item_row_list]
+        event_queue = [item_row for item_row in item_row_list]
         heapq.heapify(event_queue)
 
         stop = self.stop_event.is_set()
         while not self.stop_event.is_set():
-            _, item_row = heapq.heappop(event_queue)
+            item_row = heapq.heappop(event_queue)
             now = datetime.now()
             if now < item_row.start_time:
                 stop = self.stop_event.wait((item_row.start_time - now).seconds)
@@ -254,8 +256,7 @@ class Agent:
             if not stop:
                 self.update_rules_by_search(item_row)
                 item_row.start_time += timedelta(days=1)
-                now = datetime.now()
-                heapq.heappush(event_queue, ((item_row.start_time - now).seconds, item_row))
+                heapq.heappush(event_queue, item_row)
 
     def stop(self):
         self.stop_event.set()

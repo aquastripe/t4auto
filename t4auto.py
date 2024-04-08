@@ -162,6 +162,7 @@ class T4AutoGUI(QWidget):
             reason = self.table.item(row_idx, ColumnIdx.REASON).text() \
                 if self.table.item(row_idx, ColumnIdx.REASON) else ''
             item_row = ItemRow(
+                row_idx=row_idx,
                 location=location,
                 keyword=keyword,
                 start_time=start_time,
