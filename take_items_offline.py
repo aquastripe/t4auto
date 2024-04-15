@@ -4,7 +4,6 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from threading import Event
-from typing import List
 
 from selenium import webdriver
 from selenium.common import TimeoutException
@@ -12,6 +11,8 @@ from selenium.webdriver import ActionChains, Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
+
+TIMEOUT = 120
 
 
 @dataclass
@@ -24,6 +25,8 @@ class XPath:
                   'table/tbody/tr[1]/td[2]/div/div/input')
     CHECK_BOX = ('/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[1]/div[1]/div[2]/div/div/div/'
                  'table/tbody/tr[3]/td[1]/span/span[1]/input')
+    CHECK_BOX_ALL = ('/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[1]/div[1]/div[2]/div/div/div/'
+                     'table/thead/tr/th[1]/span/span[1]/input')
 
     PLU_TEXT = ('/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[1]/div[1]/div[2]/div/div/div/'
                 'table/tbody/tr[3]/td[2]')
@@ -177,45 +180,51 @@ class Agent:
         self.driver.get(URL.RULES_PAGE)
 
         # Select the search bar
-        WebDriverWait(self.driver, 5).until(
+        search_bar = WebDriverWait(self.driver, TIMEOUT).until(
             EC.presence_of_element_located((By.XPATH, XPath.SEARCH_BAR))
         )
-        search_bar = self.driver.find_element(By.XPATH, XPath.SEARCH_BAR)
         search_bar.send_keys(item.keyword)
 
         time.sleep(5)
-        while len(checkboxes := self.driver.find_elements(By.CSS_SELECTOR, Selector.CHECKBOXES)) != 0:
-            for checkbox in checkboxes:
-                checkbox.click()
 
-            next_page_button = self.driver.find_element(By.XPATH, XPath.NEXT_PAGE_BUTTON)
+        checkbox_all = WebDriverWait(self.driver, TIMEOUT).until(
+            EC.presence_of_element_located((By.XPATH, XPath.CHECK_BOX_ALL))
+        )
+        checkbox_all.click()
+        while True:
+            # time.sleep(5)
+
+            next_page_button = WebDriverWait(self.driver, TIMEOUT).until(
+                EC.presence_of_element_located((By.XPATH, XPath.NEXT_PAGE_BUTTON))
+            )
             if next_page_button.is_enabled():
                 next_page_button.click()
+                checkbox_all = WebDriverWait(self.driver, TIMEOUT).until(
+                    EC.presence_of_element_located((By.XPATH, XPath.CHECK_BOX_ALL))
+                )
+                checkbox_all.click()
             else:
                 break
 
         # Click the location
-        WebDriverWait(self.driver, 5).until(
+        location = WebDriverWait(self.driver, TIMEOUT).until(
             EC.presence_of_element_located((By.XPATH, XPath.LOCATION))
         )
-        location = self.driver.find_element(By.XPATH, XPath.LOCATION)
         location.click()
 
         # TODO: Select by the location
-        WebDriverWait(self.driver, 5).until(
+        option = WebDriverWait(self.driver, TIMEOUT).until(
             EC.presence_of_element_located((By.XPATH, XPath.LOCATION_FIRST_OPTION))
         )
-        option = self.driver.find_element(By.XPATH, XPath.LOCATION_FIRST_OPTION)
         option.click()
         option.send_keys(Keys.TAB)
 
         actions = ActionChains(self.driver).send_keys(Keys.TAB * 2)
         actions.perform()
 
-        WebDriverWait(self.driver, 5).until(
+        end_date = WebDriverWait(self.driver, TIMEOUT).until(
             EC.element_to_be_clickable((By.XPATH, XPath.END_DATE))
         )
-        end_date = self.driver.find_element(By.XPATH, XPath.END_DATE)
         today = datetime.today().strftime('%d%m%Y')
         end_date.send_keys(today)
 
@@ -223,15 +232,13 @@ class Agent:
         actions.perform()
 
         # Enter the reason
-        WebDriverWait(self.driver, 5).until(
+        reason_button = WebDriverWait(self.driver, TIMEOUT).until(
             EC.element_to_be_clickable((By.XPATH, XPath.REASON_BUTTON))
         )
-        reason_button = self.driver.find_element(By.XPATH, XPath.REASON_BUTTON)
         reason_button.click()
-        WebDriverWait(self.driver, 5).until(
+        reason_option = WebDriverWait(self.driver, TIMEOUT).until(
             EC.presence_of_element_located((By.XPATH, XPath.OPTION_CUSTOM_BUTTON))
         )
-        reason_option = self.driver.find_element(By.XPATH, XPath.OPTION_CUSTOM_BUTTON)
         reason_option.click()
         reason_text = self.driver.find_element(By.XPATH, XPath.REASON_TEXT)
         reason = item.reason if item.reason else 'Deleted by t4auto'
