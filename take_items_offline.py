@@ -125,57 +125,6 @@ class Agent:
                 logging.info('Login failed.')
                 print('Login failed.')
 
-    def update_rules(self, plu):
-        self.driver.get(URL.RULES_PAGE)
-
-        WebDriverWait(self.driver, 5).until(
-            EC.presence_of_element_located((By.XPATH, XPath.PLU_FILTER))
-        )
-        plu_filter = self.driver.find_element(By.XPATH, XPath.PLU_FILTER)
-        plu_filter.clear()
-        plu_filter.send_keys(plu)
-
-        WebDriverWait(self.driver, 5).until(
-            EC.text_to_be_present_in_element((By.XPATH, XPath.PLU_TEXT), f'{plu}')
-        )
-        check_box = self.driver.find_element(By.XPATH, XPath.CHECK_BOX)
-        check_box.click()
-
-        WebDriverWait(self.driver, 5).until(
-            EC.presence_of_element_located((By.XPATH, XPath.LOCATION))
-        )
-        location = self.driver.find_element(By.XPATH, XPath.LOCATION)
-        location.click()
-
-        WebDriverWait(self.driver, 5).until(
-            EC.presence_of_element_located((By.XPATH, XPath.LOCATION_FIRST_OPTION))
-        )
-        option = self.driver.find_element(By.XPATH, XPath.LOCATION_FIRST_OPTION)
-        option.click()
-        option.send_keys(Keys.TAB)
-
-        actions = ActionChains(self.driver).send_keys(Keys.TAB * 4)
-        actions.perform()
-
-        WebDriverWait(self.driver, 5).until(
-            EC.element_to_be_clickable((By.XPATH, XPath.REASON_BUTTON))
-        )
-        reason_button = self.driver.find_element(By.XPATH, XPath.REASON_BUTTON)
-        reason_button.click()
-
-        WebDriverWait(self.driver, 5).until(
-            EC.presence_of_element_located((By.XPATH, XPath.OPTION_CUSTOM_BUTTON))
-        )
-        reason_option = self.driver.find_element(By.XPATH, XPath.OPTION_CUSTOM_BUTTON)
-        reason_option.click()
-        reason_text = self.driver.find_element(By.XPATH, XPath.REASON_TEXT)
-        reason_text.send_keys('Delete by take_items_offline.py')
-
-        save_button = self.driver.find_element(By.XPATH, XPath.SAVE_BUTTON)
-        save_button.click()
-
-        logging.info(f'PLU: {plu} was checked and saved.')
-
     def update_rules_by_search(self, item: ItemRow):
         self.driver.get(URL.RULES_PAGE)
 
