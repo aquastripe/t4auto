@@ -136,14 +136,14 @@ class T4AutoGUI(QWidget):
     @Slot()
     def start_automation(self):
         self.start_automation_button.setEnabled(False)
-
         item_row_list = self._collect_item_row_list_from_table()
-        user_info = UserInfo(self.username_edit.text(), self.password_edit.text())
-
-        thread = Thread(target=start_automation, args=(self.agent, user_info, item_row_list))
-        thread.start()
-
-        self.stop_automation_button.setEnabled(True)
+        if len(item_row_list) > 0:
+            user_info = UserInfo(self.username_edit.text(), self.password_edit.text())
+            thread = Thread(target=start_automation, args=(self.agent, user_info, item_row_list))
+            thread.start()
+            self.stop_automation_button.setEnabled(True)
+        else:
+            self.start_automation_button.setEnabled(True)
 
     def _collect_item_row_list_from_table(self):
         item_row_list = []
@@ -158,8 +158,10 @@ class T4AutoGUI(QWidget):
             start_time.replace(**today)
             location = self.table.item(row_idx, ColumnIdx.LOCATION).text() \
                 if self.table.item(row_idx, ColumnIdx.LOCATION) else ''
-            keyword = self.table.item(row_idx, ColumnIdx.KEYWORD).text() \
-                if self.table.item(row_idx, ColumnIdx.KEYWORD) else ''
+            if self.table.item(row_idx, ColumnIdx.KEYWORD):
+                keyword = self.table.item(row_idx, ColumnIdx.KEYWORD).text()
+            else:
+                continue
             reason = self.table.item(row_idx, ColumnIdx.REASON).text() \
                 if self.table.item(row_idx, ColumnIdx.REASON) else ''
             item_row = ItemRow(
@@ -175,9 +177,7 @@ class T4AutoGUI(QWidget):
     @Slot()
     def stop_automation(self):
         self.stop_automation_button.setEnabled(False)
-
         stop_automation(self.agent)
-
         self.start_automation_button.setEnabled(True)
 
 
