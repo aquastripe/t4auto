@@ -1,27 +1,28 @@
+import datetime
 import sys
-from threading import Thread
-from datetime import datetime
 from enum import IntEnum
+from threading import Thread
 
 from PySide6 import QtGui
-from PySide6.QtCore import Slot, Qt, QDate
+from PySide6.QtCore import Slot, Qt, QTime
 from PySide6.QtWidgets import QApplication, QGroupBox, QWidget, QLineEdit, QGridLayout, \
-    QTableWidget, QFormLayout, QPushButton, QHeaderView, QDateTimeEdit, QVBoxLayout, QRadioButton, QCheckBox, \
-    QHBoxLayout
+    QTableWidget, QFormLayout, QPushButton, QHeaderView, QVBoxLayout, QRadioButton, QCheckBox, \
+    QHBoxLayout, QTimeEdit
 
-from take_items_offline import ItemRow, UserInfo, Agent
+from take_items_offline import ActionRow, UserInfo, Agent, ActionType
 
 
 class ColumnIdx(IntEnum):
     LOCATION = 0
     KEYWORD = 1
     START = 2
-    REASON = 3
-    DELETE = 4
+    END = 3
+    REASON = 4
+    DELETE = 5
 
 
 class T4AutoGUI(QWidget):
-    COLUMN_NAMES = ['Location', 'Search item by keyword', 'Start time', 'Reason', 'Delete the row']
+    COLUMN_NAMES = ['Location', 'Search item by keyword', 'Start time', 'End time', 'Reason', 'Delete the row']
 
     def __init__(self):
         super().__init__()
@@ -112,6 +113,7 @@ class T4AutoGUI(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.LOCATION, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.KEYWORD, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.START, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.END, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.REASON, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.DELETE, QHeaderView.ResizeMode.ResizeToContents)
 
@@ -120,10 +122,15 @@ class T4AutoGUI(QWidget):
         row_idx = self.table.rowCount()
         self.table.insertRow(row_idx)
 
-        start_time = QDateTimeEdit(QDate.currentDate())
+        start_time = QTimeEdit(QTime(0, 0))
         start_time.setDisplayFormat('hh:mm')
         start_time.setFrame(False)
         self.table.setCellWidget(row_idx, ColumnIdx.START, start_time)
+
+        end_time = QTimeEdit(QTime(23, 59))
+        end_time.setDisplayFormat('hh:mm')
+        end_time.setFrame(False)
+        self.table.setCellWidget(row_idx, ColumnIdx.END, end_time)
 
         delete_button = QPushButton('Delete')
         delete_button.clicked.connect(self.del_row)
@@ -136,7 +143,7 @@ class T4AutoGUI(QWidget):
     @Slot()
     def start_automation(self):
         self.start_automation_button.setEnabled(False)
-        item_row_list = self._collect_item_row_list_from_table()
+        item_row_list = self._collect_actions_from_table()
         if len(item_row_list) > 0:
             user_info = UserInfo(self.username_edit.text(), self.password_edit.text())
             thread = Thread(target=start_automation, args=(self.agent, user_info, item_row_list))
@@ -145,33 +152,46 @@ class T4AutoGUI(QWidget):
         else:
             self.start_automation_button.setEnabled(True)
 
-    def _collect_item_row_list_from_table(self):
+    def _collect_actions_from_table(self):
         item_row_list = []
+        now = datetime.datetime.now()
+        i = 0
         for row_idx in range(self.table.rowCount()):
-            start_time = self.table.cellWidget(row_idx, ColumnIdx.START).dateTime().toPython()  # type: datetime
-            now = datetime.now()
-            today = dict(
-                year=now.year,
-                month=now.month,
-                day=now.day
-            )
-            start_time.replace(**today)
-            location = self.table.item(row_idx, ColumnIdx.LOCATION).text() \
-                if self.table.item(row_idx, ColumnIdx.LOCATION) else ''
             if self.table.item(row_idx, ColumnIdx.KEYWORD):
                 keyword = self.table.item(row_idx, ColumnIdx.KEYWORD).text()
             else:
                 continue
+
+            start_time = self.table.cellWidget(row_idx, ColumnIdx.START).time().toPython()  # type: datetime.time
+            end_time = self.table.cellWidget(row_idx, ColumnIdx.END).time().toPython()  # type: datetime.time
+            start_datetime = now.replace(hour=start_time.hour, minute=start_time.minute, second=start_time.second)
+            end_datetime = now.replace(hour=end_time.hour, minute=end_time.minute, second=end_time.second)
+
+            location = self.table.item(row_idx, ColumnIdx.LOCATION).text() \
+                if self.table.item(row_idx, ColumnIdx.LOCATION) else ''
             reason = self.table.item(row_idx, ColumnIdx.REASON).text() \
                 if self.table.item(row_idx, ColumnIdx.REASON) else ''
-            item_row = ItemRow(
-                row_idx=row_idx,
+
+            item_row = ActionRow(
+                action_idx=i,
                 location=location,
                 keyword=keyword,
-                start_time=start_time,
+                action_time=start_datetime,
+                action_type=ActionType.START,
                 reason=reason,
             )
             item_row_list.append(item_row)
+            item_row = ActionRow(
+                action_idx=i,
+                location=location,
+                keyword=keyword,
+                action_time=end_datetime,
+                action_type=ActionType.END,
+                reason=reason,
+            )
+            item_row_list.append(item_row)
+            i += 1
+
         return item_row_list
 
     @Slot()
@@ -181,7 +201,7 @@ class T4AutoGUI(QWidget):
         self.start_automation_button.setEnabled(True)
 
 
-def start_automation(agent: Agent, user_info: UserInfo, item_row_list: list):
+def start_automation(agent: Agent, user_info: UserInfo, item_row_list: list[ActionRow]):
     agent.create_browser_session()
     agent.login(user_info)
     agent.update_rules_loop(item_row_list)

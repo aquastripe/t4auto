@@ -1,8 +1,8 @@
-import heapq
+import datetime
 import logging
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from enum import IntEnum
 from threading import Event
 
 from selenium import webdriver
@@ -61,25 +61,38 @@ class URL:
     RULES_PAGE = 'https://t4australia.redcatcloud.com.au/admin2/item-availability-rules/rule'
 
 
+class ActionType(IntEnum):
+    START = 0
+    END = 1
+
+
 @dataclass
-class ItemRow:
-    row_idx: int
+class ActionRow:
+    action_idx: int
     location: str
     keyword: str
-    start_time: datetime
+    action_time: datetime.datetime
+    action_type: ActionType
     reason: str
 
     def __lt__(self, other):
-        return (self.start_time, self.row_idx) < (other.start_time, other.row_idx)
+        return (self.action_time, self.action_idx) < (other.action_time, other.action_idx)
 
     def __eq__(self, other):
-        return (self.start_time, self.row_idx) == (other.start_time, other.row_idx)
+        return (self.action_time, self.action_idx) == (other.action_time, other.action_idx)
 
 
 @dataclass
 class UserInfo:
     username: str
     password: str
+
+
+def time_difference_seconds(time1: datetime.datetime, time2: datetime.datetime):
+    """
+    Returns seconds of (time1 - time2).
+    """
+    return (time1 - time2).total_seconds()
 
 
 class Agent:
@@ -125,7 +138,7 @@ class Agent:
                 logging.info('Login failed.')
                 print('Login failed.')
 
-    def update_rules_by_search(self, item: ItemRow):
+    def take_items_offline_by_search(self, item: ActionRow):
         self.driver.get(URL.RULES_PAGE)
 
         # Select the search bar
@@ -174,7 +187,7 @@ class Agent:
         end_date = WebDriverWait(self.driver, TIMEOUT).until(
             EC.element_to_be_clickable((By.XPATH, XPath.END_DATE))
         )
-        today = datetime.today().strftime('%d%m%Y')
+        today = datetime.datetime.today().strftime('%d%m%Y')
         end_date.send_keys(today)
 
         actions = ActionChains(self.driver).send_keys(Keys.TAB * 2)
@@ -198,21 +211,26 @@ class Agent:
 
         logging.info(f'{item.keyword} was checked and saved.')
 
-    def update_rules_loop(self, item_row_list):
-        event_queue = [item_row for item_row in item_row_list]
-        heapq.heapify(event_queue)
+    def update_rules_loop(self, actions: list[ActionRow]):
+        actions.sort()
 
-        stop = self.stop_event.is_set()
+        i = 0
         while not self.stop_event.is_set():
-            item_row = heapq.heappop(event_queue)
-            now = datetime.now()
-            if now < item_row.start_time:
-                stop = self.stop_event.wait((item_row.start_time - now).seconds)
+            now_time = datetime.datetime.now()
+            if now_time < actions[i].action_time:
+                seconds = time_difference_seconds(actions[i].action_time, now_time)
+                self.stop_event.wait(seconds)
 
-            if not stop:
-                self.update_rules_by_search(item_row)
-                item_row.start_time += timedelta(days=1)
-                heapq.heappush(event_queue, item_row)
+            if not self.stop_event.is_set():
+                if actions[i].action_type == ActionType.START:
+                    self.take_items_offline_by_search(actions[i])
+                else:
+                    print('Take items online.')
+
+            actions[i].action_time += datetime.timedelta(days=1)
+
+            i += 1
+            i %= len(actions)
 
     def stop(self):
         self.stop_event.set()
