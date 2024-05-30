@@ -11,6 +11,8 @@ from PySide6.QtWidgets import QApplication, QGroupBox, QWidget, QLineEdit, QGrid
 
 from take_items_offline import ActionRow, UserInfo, Agent, ActionType
 
+COLUMN_NAMES = ['Location', 'Search item by keyword', 'Start time', 'End time', 'Reason', 'Delete the row']
+
 
 class ColumnIdx(IntEnum):
     LOCATION = 0
@@ -22,7 +24,6 @@ class ColumnIdx(IntEnum):
 
 
 class T4AutoGUI(QWidget):
-    COLUMN_NAMES = ['Location', 'Search item by keyword', 'Start time', 'End time', 'Reason', 'Delete the row']
 
     def __init__(self):
         super().__init__()
@@ -123,8 +124,8 @@ class T4AutoGUI(QWidget):
             self.password_edit.setEchoMode(QLineEdit.EchoMode.Password)
 
     def draw_table_header(self):
-        self.table.setColumnCount(len(self.COLUMN_NAMES))
-        self.table.setHorizontalHeaderLabels(self.COLUMN_NAMES)
+        self.table.setColumnCount(len(COLUMN_NAMES))
+        self.table.setHorizontalHeaderLabels(COLUMN_NAMES)
         self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.LOCATION, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.KEYWORD, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.START, QHeaderView.ResizeMode.ResizeToContents)
