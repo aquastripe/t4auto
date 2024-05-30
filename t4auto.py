@@ -6,9 +6,9 @@ from threading import Thread
 from PySide6 import QtGui
 from PySide6.QtCore import Slot, QTime
 from PySide6.QtWidgets import QApplication, QGroupBox, QWidget, QGridLayout, \
-    QTableWidget, QPushButton, QHeaderView, QVBoxLayout, QRadioButton, QTimeEdit, QMenu, QTableWidgetItem
+    QTableWidget, QPushButton, QHeaderView, QTimeEdit, QMenu, QTableWidgetItem
 
-from t4autolibs.gui.login import Login
+from t4autolibs.gui.login import Login, Browser
 from take_items_offline import ActionRow, Agent, ActionType
 
 COLUMN_NAMES = ['Location', 'Search item by keyword', 'Start time', 'End time', 'Reason', 'Delete the row']
@@ -30,23 +30,10 @@ class T4AutoGUI(QWidget):
 
         self.agent = Agent()
 
-        # Login group
         self.login = Login(self.agent)
 
         # Browser group
-        self.browser_layout = QVBoxLayout()
-        chrome_button = QRadioButton('Chrome')
-        chrome_button.click()
-        chrome_button.setEnabled(False)  # TODO: future feature
-        self.browser_layout.addWidget(chrome_button)
-        edge_button = QRadioButton('Edge')
-        edge_button.setEnabled(False)
-        self.browser_layout.addWidget(edge_button)
-        firefox_button = QRadioButton('Firefox')
-        firefox_button.setEnabled(False)
-        self.browser_layout.addWidget(firefox_button)
-        self.browser_group = QGroupBox('Browser')
-        self.browser_group.setLayout(self.browser_layout)
+        self.browser = Browser()
 
         # Take items offline group
         self.row_serial_id = 0
@@ -80,7 +67,7 @@ class T4AutoGUI(QWidget):
         # Compose all groups
         self.main_layout = QGridLayout()
         self.main_layout.addWidget(self.login.group, 0, 0)
-        self.main_layout.addWidget(self.browser_group, 0, 1)
+        self.main_layout.addWidget(self.browser.group, 0, 1)
         self.main_layout.addWidget(self.take_offline_group, 1, 0, 1, 2)
         self.setLayout(self.main_layout)
 

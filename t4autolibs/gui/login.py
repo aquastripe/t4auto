@@ -1,6 +1,7 @@
 from PySide6 import QtGui
 from PySide6.QtCore import Slot, Qt
-from PySide6.QtWidgets import QFormLayout, QGroupBox, QLineEdit, QHBoxLayout, QCheckBox, QPushButton
+from PySide6.QtWidgets import QFormLayout, QGroupBox, QLineEdit, QHBoxLayout, QCheckBox, QPushButton, QVBoxLayout, \
+    QRadioButton
 
 from take_items_offline import UserInfo
 
@@ -68,3 +69,25 @@ class Login:
         if self._is_logged_in:
             self._is_logged_in = False
             self.agent.logout()
+
+
+class Browser:
+
+    def __init__(self):
+        self.browser_layout = QVBoxLayout()
+
+        chrome_button = QRadioButton('Chrome')
+        chrome_button.click()
+        chrome_button.setEnabled(False)  # TODO: future feature
+        self.browser_layout.addWidget(chrome_button)
+
+        edge_button = QRadioButton('Edge')
+        edge_button.setEnabled(False)
+        self.browser_layout.addWidget(edge_button)
+
+        firefox_button = QRadioButton('Firefox')
+        firefox_button.setEnabled(False)
+        self.browser_layout.addWidget(firefox_button)
+
+        self.group = QGroupBox('Browser')
+        self.group.setLayout(self.browser_layout)
