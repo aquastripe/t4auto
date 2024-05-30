@@ -7,7 +7,7 @@ from PySide6 import QtGui
 from PySide6.QtCore import Slot, Qt, QTime
 from PySide6.QtWidgets import QApplication, QGroupBox, QWidget, QLineEdit, QGridLayout, \
     QTableWidget, QFormLayout, QPushButton, QHeaderView, QVBoxLayout, QRadioButton, QCheckBox, \
-    QHBoxLayout, QTimeEdit
+    QHBoxLayout, QTimeEdit, QMenu, QTableWidgetItem
 
 from take_items_offline import ActionRow, UserInfo, Agent, ActionType
 
@@ -43,9 +43,23 @@ class T4AutoGUI(QWidget):
         self.save_username = QCheckBox('Save username')
         self.save_username.setEnabled(False)  # TODO: future feature
         self.checkbox_layout.addWidget(self.save_username)
+
         self.display_password = QCheckBox('Show password')
         self.display_password.stateChanged.connect(self.show_password)
         self.checkbox_layout.addWidget(self.display_password)
+
+        self._is_logged_in = False
+        self.login_button = QPushButton('Login')
+        self.login_button.setIcon(QtGui.QIcon('icons/login_24dp_FILL0_wght400_GRAD0_opsz24.svg'))
+        self.login_button.clicked.connect(self.login)
+        self.checkbox_layout.addWidget(self.login_button)
+
+        self.logout_button = QPushButton('Logout')
+        self.logout_button.setIcon(QtGui.QIcon('icons/logout_24dp_FILL0_wght400_GRAD0_opsz24.svg'))
+        self.logout_button.clicked.connect(self.logout)
+        self.logout_button.setEnabled(False)
+        self.checkbox_layout.addWidget(self.logout_button)
+
         self.login_layout.addRow(self.checkbox_layout)
 
         # Browser group
@@ -72,6 +86,7 @@ class T4AutoGUI(QWidget):
         # Take items offline group / table
         self.table = QTableWidget()
         self.draw_table_header()
+        self.table.cellClicked.connect(self._show_location)
         self.add_row()
         self.take_offline_layout.addWidget(self.table, 0, 0, 1, 3)
 
@@ -122,6 +137,8 @@ class T4AutoGUI(QWidget):
         row_idx = self.table.rowCount()
         self.table.insertRow(row_idx)
 
+        self.table.setItem(row_idx, ColumnIdx.LOCATION, QTableWidgetItem('Location'))
+
         start_time = QTimeEdit(QTime(0, 0))
         start_time.setDisplayFormat('hh:mm')
         start_time.setFrame(False)
@@ -136,17 +153,45 @@ class T4AutoGUI(QWidget):
         delete_button.clicked.connect(self.del_row)
         self.table.setCellWidget(row_idx, ColumnIdx.DELETE, delete_button)
 
+    def _show_location(self, row, column):
+        if column != 0:
+            return
+
+        menu = QMenu()
+
+        location = menu.addAction('Location')
+
+        cell_rect = self.table.visualItemRect(self.table.item(row, column))
+        global_position = self.table.viewport().mapToGlobal(cell_rect.bottomLeft())
+        action = menu.exec(global_position)
+
     @Slot()
     def del_row(self):
         self.table.removeRow(self.table.currentRow())
+
+    @Slot()
+    def login(self):
+        self.login_button.setEnabled(False)
+        self.logout_button.setEnabled(True)
+        if not self._is_logged_in:
+            self._is_logged_in = True
+            user_info = UserInfo(self.username_edit.text(), self.password_edit.text())
+            self.agent.login(user_info)
+
+    @Slot()
+    def logout(self):
+        self.login_button.setEnabled(True)
+        self.logout_button.setEnabled(False)
+        if self._is_logged_in:
+            self._is_logged_in = False
+            self.agent.logout()
 
     @Slot()
     def start_automation(self):
         self.start_automation_button.setEnabled(False)
         item_row_list = self._collect_actions_from_table()
         if len(item_row_list) > 0:
-            user_info = UserInfo(self.username_edit.text(), self.password_edit.text())
-            thread = Thread(target=start_automation, args=(self.agent, user_info, item_row_list))
+            thread = Thread(target=self.agent.update_rules_loop, args=(item_row_list,))
             thread.start()
             self.stop_automation_button.setEnabled(True)
         else:
@@ -179,6 +224,7 @@ class T4AutoGUI(QWidget):
                 action_time=start_datetime,
                 action_type=ActionType.START,
                 reason=reason,
+                store_id=int(sys.argv[1]),  # TODO: fetch store_id from API
             )
             item_row_list.append(item_row)
             item_row = ActionRow(
@@ -188,6 +234,7 @@ class T4AutoGUI(QWidget):
                 action_time=end_datetime,
                 action_type=ActionType.END,
                 reason=reason,
+                store_id=int(sys.argv[1]),  # TODO: fetch store_id from API
             )
             item_row_list.append(item_row)
             i += 1
@@ -197,20 +244,10 @@ class T4AutoGUI(QWidget):
     @Slot()
     def stop_automation(self):
         self.stop_automation_button.setEnabled(False)
-        stop_automation(self.agent)
+        if self.agent.session_is_started:
+            self.agent.stop()
+            self.agent.destroy_browser_session()
         self.start_automation_button.setEnabled(True)
-
-
-def start_automation(agent: Agent, user_info: UserInfo, item_row_list: list[ActionRow]):
-    agent.create_browser_session()
-    agent.login(user_info)
-    agent.update_rules_loop(item_row_list)
-
-
-def stop_automation(agent: Agent):
-    if agent.session_is_started:
-        agent.stop()
-        agent.destroy_browser_session()
 
 
 def main():

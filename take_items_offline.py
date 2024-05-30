@@ -1,13 +1,12 @@
 import datetime
 import logging
-import time
 from dataclasses import dataclass
 from enum import IntEnum
 from threading import Event
 
+import requests
 from selenium import webdriver
 from selenium.common import TimeoutException
-from selenium.webdriver import ActionChains, Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
@@ -57,8 +56,9 @@ class Selector:
 @dataclass
 class URL:
     LOGIN_PAGE = 'https://t4australia.redcatcloud.com.au/auth/login'
-    ADMIN_PAGE = 'https://t4australia.redcatcloud.com.au/admin'
-    RULES_PAGE = 'https://t4australia.redcatcloud.com.au/admin2/item-availability-rules/rule'
+    GET_ITEMS_API = 'https://t4australia.redcatcloud.com.au/api/v1/plus-active/'
+    UPDATE_ITEMS_API = 'https://t4australia.redcatcloud.com.au/api/v1/pluavailabilityrules'
+    GET_STORES_API = 'https://t4australia.redcatcloud.com.au/api/v1/config/lookup/stores/'
 
 
 class ActionType(IntEnum):
@@ -74,6 +74,7 @@ class ActionRow:
     action_time: datetime.datetime
     action_type: ActionType
     reason: str
+    store_id: int
 
     def __lt__(self, other):
         return (self.action_time, self.action_idx) < (other.action_time, other.action_idx)
@@ -99,38 +100,44 @@ class Agent:
 
     def __init__(self):
         self.session_is_started = False
+        self.store_name_to_id = {}
+        self.store_id_to_name = {}
+        self.session = requests.session()
+        self.stop_event = Event()
 
     def create_browser_session(self):
-        self.driver = webdriver.Chrome()
-        self.driver.maximize_window()
-        self.stop_event = Event()
         self.session_is_started = True
 
     def destroy_browser_session(self):
-        self.driver.quit()
         self.session_is_started = False
 
     def login(self, user_info: UserInfo):
-        self.driver.get(URL.LOGIN_PAGE)
+        driver = webdriver.Chrome()
+        self._login_by_driver(driver, user_info)
+        self._update_session(driver)
+        self._get_store_ids()
+        driver.quit()
 
+    def _login_by_driver(self, driver, user_info):
+        driver.get(URL.LOGIN_PAGE)
         is_login = False
         while not is_login:
             username = user_info.username
             password = user_info.password
 
-            username_box = self.driver.find_element(By.ID, 'username')
+            username_box = driver.find_element(By.ID, 'username')
             username_box.clear()
             username_box.send_keys(username)
 
-            password_box = self.driver.find_element(By.ID, 'password')
+            password_box = driver.find_element(By.ID, 'password')
             password_box.clear()
             password_box.send_keys(password)
 
-            login_button = self.driver.find_element(By.XPATH, XPath.LOGIN_BUTTON)
+            login_button = driver.find_element(By.XPATH, XPath.LOGIN_BUTTON)
             login_button.click()
 
             try:
-                WebDriverWait(self.driver, 2).until(
+                WebDriverWait(driver, 2).until(
                     EC.url_changes(URL.LOGIN_PAGE)
                 )
                 is_login = True
@@ -138,77 +145,49 @@ class Agent:
                 logging.info('Login failed.')
                 print('Login failed.')
 
+    def _update_session(self, driver):
+        user_agent = driver.execute_script('return navigator.userAgent;')
+        self.session.headers['user-agent'] = user_agent
+        for cookie in driver.get_cookies():
+            self.session.cookies.set(name=cookie['name'], value=cookie['value'], domain=cookie['domain'])
+
+    def logout(self):
+        self.session.close()
+        self.session = requests.session()
+
     def take_items_offline_by_search(self, item: ActionRow):
-        self.driver.get(URL.RULES_PAGE)
+        # select all items by the keyword
+        n_items_per_page = 100
+        params = {
+            'qv': item.keyword,
+            'start': 0,
+            'limit': n_items_per_page,
+        }
+        response = self.session.get(URL.GET_ITEMS_API, params=params).json()
+        if not response['success']:
+            raise ValueError('Response["success"] is false.\n' + str(response))
 
-        # Select the search bar
-        search_bar = WebDriverWait(self.driver, TIMEOUT).until(
-            EC.presence_of_element_located((By.XPATH, XPath.SEARCH_BAR))
-        )
-        search_bar.send_keys(item.keyword)
+        items = response['data']
+        start_idx = 0
+        while start_idx + response['count'] < response['total']:
+            start_idx += n_items_per_page
+            params['start'] = start_idx
+            response = self.session.get(URL.GET_ITEMS_API, params=params).json()
+            if not response['success']:
+                raise ValueError('Response["success"] is false.\n' + str(response))
 
-        time.sleep(5)
+            items += response['data']
 
-        checkbox_all = WebDriverWait(self.driver, TIMEOUT).until(
-            EC.presence_of_element_located((By.XPATH, XPath.CHECK_BOX_ALL))
-        )
-        checkbox_all.click()
-        while True:
-            # time.sleep(5)
-
-            next_page_button = WebDriverWait(self.driver, TIMEOUT).until(
-                EC.presence_of_element_located((By.XPATH, XPath.NEXT_PAGE_BUTTON))
-            )
-            if next_page_button.is_enabled():
-                next_page_button.click()
-                checkbox_all = WebDriverWait(self.driver, TIMEOUT).until(
-                    EC.presence_of_element_located((By.XPATH, XPath.CHECK_BOX_ALL))
-                )
-                checkbox_all.click()
-            else:
-                break
-
-        # Click the location
-        location = WebDriverWait(self.driver, TIMEOUT).until(
-            EC.presence_of_element_located((By.XPATH, XPath.LOCATION))
-        )
-        location.click()
-
-        # TODO: Select by the location
-        option = WebDriverWait(self.driver, TIMEOUT).until(
-            EC.presence_of_element_located((By.XPATH, XPath.LOCATION_FIRST_OPTION))
-        )
-        option.click()
-        option.send_keys(Keys.TAB)
-
-        actions = ActionChains(self.driver).send_keys(Keys.TAB * 2)
-        actions.perform()
-
-        end_date = WebDriverWait(self.driver, TIMEOUT).until(
-            EC.element_to_be_clickable((By.XPATH, XPath.END_DATE))
-        )
-        today = datetime.datetime.today().strftime('%d%m%Y')
-        end_date.send_keys(today)
-
-        actions = ActionChains(self.driver).send_keys(Keys.TAB * 2)
-        actions.perform()
-
-        # Enter the reason
-        reason_button = WebDriverWait(self.driver, TIMEOUT).until(
-            EC.element_to_be_clickable((By.XPATH, XPath.REASON_BUTTON))
-        )
-        reason_button.click()
-        reason_option = WebDriverWait(self.driver, TIMEOUT).until(
-            EC.presence_of_element_located((By.XPATH, XPath.OPTION_CUSTOM_BUTTON))
-        )
-        reason_option.click()
-        reason_text = self.driver.find_element(By.XPATH, XPath.REASON_TEXT)
-        reason = item.reason if item.reason else 'Deleted by t4auto'
-        reason_text.send_keys(reason)
-
-        save_button = self.driver.find_element(By.XPATH, XPath.SAVE_BUTTON)
-        save_button.click()
-
+        plu_codes = [item['PLUCode'] for item in items]
+        payload = {
+            'PLUCode': plu_codes,
+            'CustomReason': item.reason if item.reason else 'Deleted by t4auto',
+            'Reason': 'Custom',
+            'StoreID': [item.store_id],
+        }
+        response = self.session.post(URL.UPDATE_ITEMS_API, data=payload).json()
+        if not response['success']:
+            raise ValueError('Response["success"] is false.\n' + str(response))
         logging.info(f'{item.keyword} was checked and saved.')
 
     def update_rules_loop(self, actions: list[ActionRow]):
@@ -234,3 +213,14 @@ class Agent:
 
     def stop(self):
         self.stop_event.set()
+
+    def _get_store_ids(self):
+        response = self.session.get(URL.GET_STORES_API, params={'restricted': 'true'}).json()
+        if not response['success']:
+            raise ValueError('Response["success"] is false.\n' + str(response))
+
+        for data in response['data']:
+            store_name = data['name']
+            store_id = data['value']
+            self.store_name_to_id[store_name] = store_id
+            self.store_id_to_name[store_id] = store_name
