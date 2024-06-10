@@ -1,5 +1,4 @@
 import datetime
-import sys
 from enum import IntEnum
 from threading import Thread
 

@@ -19,39 +19,6 @@ class XPath:
     LOGIN_BUTTON = '/html/body/div/div[2]/div/div/div/div/div/div[2]/form/button'
     LOGIN_MESSAGE = '/html/body/div[2]/div[1]/span'
 
-    ITEM_AVAIL_RULES = '/html/body/div[1]/div[1]/div/ul/li[3]/div/ul/li[3]/a'
-    PLU_FILTER = ('/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[1]/div[1]/div[2]/div/div/div/'
-                  'table/tbody/tr[1]/td[2]/div/div/input')
-    CHECK_BOX = ('/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[1]/div[1]/div[2]/div/div/div/'
-                 'table/tbody/tr[3]/td[1]/span/span[1]/input')
-    CHECK_BOX_ALL = ('/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[1]/div[1]/div[2]/div/div/div/'
-                     'table/thead/tr/th[1]/span/span[1]/input')
-
-    PLU_TEXT = ('/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[1]/div[1]/div[2]/div/div/div/'
-                'table/tbody/tr[3]/td[2]')
-    SEARCH_BAR = '/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[1]/div[1]/div[1]/div/div[3]/div/input'
-
-    LOCATION = '/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[2]/div/div'
-    LOCATION_FIRST_OPTION = '/html/body/div[4]/div[3]/ul/li[2]'
-
-    END_DATE = '/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[3]/div/input'
-
-    REASON_BUTTON = '/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[4]/div/div'
-    OPTION_CUSTOM_BUTTON = '/html/body/div[4]/div[3]/ul/li'
-    REASON_TEXT = '/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[5]/div/textarea[1]'
-
-    SAVE_BUTTON = '/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[7]/div[2]/div/button'
-
-    NEXT_PAGE_BUTTON = ('/html/body/div[1]/div/div[2]/div[2]/div/div/form/div[1]/div[1]/'
-                        'table/tfoot/tr/td/div/div[3]/span[4]/button')
-
-
-@dataclass
-class Selector:
-    CHECKBOXES = ('#root > div > div.Screen > div.InnerContainer > div > div > form > div:nth-child(1) '
-                  '> div.MuiPaper-root.MuiPaper-elevation2.MuiPaper-rounded > div.jss34 > div > div > '
-                  'div > table > tbody input[type="checkbox"]')
-
 
 @dataclass
 class URL:
@@ -141,7 +108,7 @@ class Agent:
             login_button.click()
 
             try:
-                WebDriverWait(driver, 2).until(
+                WebDriverWait(driver, TIMEOUT).until(
                     EC.url_changes(URL.LOGIN_PAGE)
                 )
                 is_login = True
