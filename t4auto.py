@@ -1,22 +1,10 @@
 import sys
-from enum import IntEnum
 
 from PySide6.QtWidgets import QApplication, QWidget, QGridLayout
 
 from t4autolibs.gui.item_table import ItemTable
 from t4autolibs.gui.login import Login, Browser
 from take_items_offline import Agent
-
-COLUMN_NAMES = ['Location', 'Search item by keyword', 'Start time', 'End time', 'Reason', 'Delete the row']
-
-
-class ColumnIdx(IntEnum):
-    LOCATION = 0
-    KEYWORD = 1
-    START = 2
-    END = 3
-    REASON = 4
-    DELETE = 5
 
 
 class T4AutoGUI(QWidget):

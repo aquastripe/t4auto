@@ -69,7 +69,6 @@ class ActionType(IntEnum):
 @dataclass
 class ActionRow:
     action_idx: int
-    location: str
     keyword: str
     action_time: datetime.datetime
     action_type: ActionType
@@ -89,6 +88,12 @@ class UserInfo:
     password: str
 
 
+@dataclass
+class Store:
+    id: int
+    name: str
+
+
 def time_difference_seconds(time1: datetime.datetime, time2: datetime.datetime):
     """
     Returns seconds of (time1 - time2).
@@ -100,8 +105,7 @@ class Agent:
 
     def __init__(self):
         self.session_is_started = False
-        self.store_name_to_id = {}
-        self.store_id_to_name = {}
+        self.stores = []
         self.session = requests.session()
         self.stop_event = Event()
 
@@ -222,5 +226,4 @@ class Agent:
         for data in response['data']:
             store_name = data['name']
             store_id = data['value']
-            self.store_name_to_id[store_name] = store_id
-            self.store_id_to_name[store_id] = store_name
+            self.stores.append(Store(store_id, store_name))

@@ -1,14 +1,26 @@
 import datetime
 import sys
+from enum import IntEnum
 from threading import Thread
 
 from PySide6 import QtGui
-from PySide6.QtCore import Slot, QTime
+from PySide6.QtCore import Slot, QTime, Qt
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QGridLayout, QGroupBox, QTableWidget, QPushButton, QHeaderView, QTableWidgetItem, \
     QTimeEdit, QMenu
 
-from t4auto import COLUMN_NAMES, ColumnIdx
 from take_items_offline import ActionRow, ActionType
+
+COLUMN_NAMES = ['Location', 'Search item by keyword', 'Start time', 'End time', 'Reason', 'Delete the row']
+
+
+class ColumnIdx(IntEnum):
+    LOCATION = 0
+    KEYWORD = 1
+    START = 2
+    END = 3
+    REASON = 4
+    DELETE = 5
 
 
 class ItemTable:
@@ -49,12 +61,20 @@ class ItemTable:
             return
 
         menu = QMenu()
-
-        location = menu.addAction('Location')
+        for store in self.agent.stores:
+            action = QAction(store.name)
+            action.triggered.connect(lambda: self.edit_location(row, column, store))
+            menu.addAction(action)
 
         cell_rect = self.table.visualItemRect(self.table.item(row, column))
         global_position = self.table.viewport().mapToGlobal(cell_rect.bottomLeft())
         action = menu.exec(global_position)
+
+    def edit_location(self, row, column, store):
+        item = self.table.item(row, column)
+        if item:
+            item.setText(store.name)
+            item.setData(Qt.UserRole, store)
 
     def draw_table_header(self):
         self.table.setColumnCount(len(COLUMN_NAMES))
@@ -71,7 +91,7 @@ class ItemTable:
         row_idx = self.table.rowCount()
         self.table.insertRow(row_idx)
 
-        self.table.setItem(row_idx, ColumnIdx.LOCATION, QTableWidgetItem('Location'))
+        self.table.setItem(row_idx, ColumnIdx.LOCATION, QTableWidgetItem(''))
 
         start_time = QTimeEdit(QTime(0, 0))
         start_time.setDisplayFormat('hh:mm')
@@ -126,29 +146,29 @@ class ItemTable:
             end_time = self.table.cellWidget(row_idx, ColumnIdx.END).time().toPython()  # type: datetime.time
             end_datetime = now.replace(hour=end_time.hour, minute=end_time.minute, second=end_time.second)
 
-            location = self.table.item(row_idx, ColumnIdx.LOCATION).text() \
-                if self.table.item(row_idx, ColumnIdx.LOCATION) else ''
+            if not self.table.item(row_idx, ColumnIdx.LOCATION):
+                raise ValueError('Location does not selected.')
+
+            store_id = self.table.item(row_idx, ColumnIdx.LOCATION).data(Qt.UserRole).id
             reason = self.table.item(row_idx, ColumnIdx.REASON).text() \
                 if self.table.item(row_idx, ColumnIdx.REASON) else ''
 
             item_row = ActionRow(
                 action_idx=i,
-                location=location,
                 keyword=keyword,
                 action_time=start_datetime,
                 action_type=ActionType.START,
                 reason=reason,
-                store_id=int(sys.argv[1]),  # TODO: fetch store_id from API
+                store_id=store_id,
             )
             item_row_list.append(item_row)
             item_row = ActionRow(
                 action_idx=i,
-                location=location,
                 keyword=keyword,
                 action_time=end_datetime,
                 action_type=ActionType.END,
                 reason=reason,
-                store_id=int(sys.argv[1]),  # TODO: fetch store_id from API
+                store_id=store_id,
             )
             item_row_list.append(item_row)
             i += 1
