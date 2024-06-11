@@ -5,24 +5,13 @@ from enum import IntEnum
 from threading import Event
 
 import requests
-from selenium import webdriver
-from selenium.common import TimeoutException
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.wait import WebDriverWait
-
-TIMEOUT = 120
-
-
-@dataclass
-class XPath:
-    LOGIN_BUTTON = '/html/body/div/div[2]/div/div/div/div/div/div[2]/form/button'
-    LOGIN_MESSAGE = '/html/body/div[2]/div[1]/span'
 
 
 @dataclass
 class URL:
     LOGIN_PAGE = 'https://t4australia.redcatcloud.com.au/auth/login'
+    LOGIN_API = 'https://t4australia.redcatcloud.com.au/api/v1/login'
+    LOGOUT_API = 'https://t4australia.redcatcloud.com.au/auth/logout'
     GET_ITEMS_API = 'https://t4australia.redcatcloud.com.au/api/v1/plus-active/'
     UPDATE_ITEMS_API = 'https://t4australia.redcatcloud.com.au/api/v1/pluavailabilityrules'
     GET_STORES_API = 'https://t4australia.redcatcloud.com.au/api/v1/config/lookup/stores/'
@@ -61,6 +50,12 @@ class Store:
     name: str
 
 
+@dataclass
+class LoginStatus:
+    success: bool
+    message: str
+
+
 def time_difference_seconds(time1: datetime.datetime, time2: datetime.datetime):
     """
     Returns seconds of (time1 - time2).
@@ -71,60 +66,39 @@ def time_difference_seconds(time1: datetime.datetime, time2: datetime.datetime):
 class Agent:
 
     def __init__(self):
-        self.session_is_started = False
         self.stores = []
         self.session = requests.session()
+        self.session.headers['User-Agent'] = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                                              'AppleWebKit/537.36 (KHTML, like Gecko) '
+                                              'Chrome/124.0.0.0 Safari/537.36')
         self.stop_event = Event()
 
-    def create_browser_session(self):
-        self.session_is_started = True
-
-    def destroy_browser_session(self):
-        self.session_is_started = False
-
     def login(self, user_info: UserInfo):
-        driver = webdriver.Chrome()
-        self._login_by_driver(driver, user_info)
-        self._update_session(driver)
-        self._get_store_ids()
-        driver.quit()
-
-    def _login_by_driver(self, driver, user_info):
-        driver.get(URL.LOGIN_PAGE)
-        is_login = False
-        while not is_login:
-            username = user_info.username
-            password = user_info.password
-
-            username_box = driver.find_element(By.ID, 'username')
-            username_box.clear()
-            username_box.send_keys(username)
-
-            password_box = driver.find_element(By.ID, 'password')
-            password_box.clear()
-            password_box.send_keys(password)
-
-            login_button = driver.find_element(By.XPATH, XPath.LOGIN_BUTTON)
-            login_button.click()
-
-            try:
-                WebDriverWait(driver, TIMEOUT).until(
-                    EC.url_changes(URL.LOGIN_PAGE)
-                )
-                is_login = True
-            except TimeoutException:
-                logging.info('Login failed.')
-                print('Login failed.')
-
-    def _update_session(self, driver):
-        user_agent = driver.execute_script('return navigator.userAgent;')
-        self.session.headers['user-agent'] = user_agent
-        for cookie in driver.get_cookies():
-            self.session.cookies.set(name=cookie['name'], value=cookie['value'], domain=cookie['domain'])
+        data = {
+            'username': user_info.username,
+            'psw': user_info.password,
+            'auth_type': 'U',
+            'next': '/admin',
+            'save_session': True,
+        }
+        response = self.session.post(URL.LOGIN_API, data=data)
+        if response.status_code == 200:
+            response = response.json()
+            if response['success']:
+                self.get_store_ids()
+                return LoginStatus(success=True, message='Login successfully')
+            else:
+                return LoginStatus(success=False, message=response['additional_info']['validation_errors'][0]['msg'])
+        else:
+            raise ValueError('')
 
     def logout(self):
-        self.session.close()
-        self.session = requests.session()
+        response = self.session.get(URL.LOGOUT_API)
+        if response.status_code == 200:
+            self.session.close()
+            self.session = requests.session()
+        else:
+            raise ValueError('Response.status_code is not 200.\n' + str(response))
 
     def take_items_offline_by_search(self, item: ActionRow):
         # select all items by the keyword
@@ -185,7 +159,7 @@ class Agent:
     def stop(self):
         self.stop_event.set()
 
-    def _get_store_ids(self):
+    def get_store_ids(self):
         response = self.session.get(URL.GET_STORES_API, params={'restricted': 'true'}).json()
         if not response['success']:
             raise ValueError('Response["success"] is false.\n' + str(response))

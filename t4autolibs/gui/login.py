@@ -3,7 +3,7 @@ from PySide6.QtCore import Slot, Qt
 from PySide6.QtWidgets import QFormLayout, QGroupBox, QLineEdit, QHBoxLayout, QCheckBox, QPushButton, QVBoxLayout, \
     QRadioButton
 
-from take_items_offline import UserInfo
+from take_items_offline import UserInfo, LoginStatus
 
 
 class Login:
@@ -55,20 +55,32 @@ class Login:
 
     @Slot()
     def login(self):
-        self.login_button.setEnabled(False)
-        self.logout_button.setEnabled(True)
+        self._unset_login_button()
         if not self._is_logged_in:
             self._is_logged_in = True
             user_info = UserInfo(self.username_edit.text(), self.password_edit.text())
-            self.agent.login(user_info)
+            login_status = self.agent.login(user_info)  # type: LoginStatus
+
+            # TODO: show message
+            if login_status.success:
+                ...
+            else:
+                self._set_login_button()
 
     @Slot()
     def logout(self):
-        self.login_button.setEnabled(True)
-        self.logout_button.setEnabled(False)
+        self._set_login_button()
         if self._is_logged_in:
             self._is_logged_in = False
             self.agent.logout()
+
+    def _set_login_button(self):
+        self.login_button.setEnabled(True)
+        self.logout_button.setEnabled(False)
+
+    def _unset_login_button(self):
+        self.login_button.setEnabled(False)
+        self.logout_button.setEnabled(True)
 
 
 class Browser:

@@ -124,10 +124,7 @@ class ItemTable:
     @Slot()
     def stop_automation(self):
         self.stop_automation_button.setEnabled(False)
-        if self.agent.session_is_started:
-            self.agent.stop()
-            self.agent.destroy_browser_session()
-
+        self.agent.stop()
         self.start_automation_button.setEnabled(True)
 
     def collect_items_from_table(self):
