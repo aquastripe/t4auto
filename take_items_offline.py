@@ -67,11 +67,14 @@ class Agent:
 
     def __init__(self):
         self.stores = []
+        self._reset_session()
+        self.stop_event = Event()
+
+    def _reset_session(self):
         self.session = requests.session()
         self.session.headers['User-Agent'] = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                                               'AppleWebKit/537.36 (KHTML, like Gecko) '
                                               'Chrome/124.0.0.0 Safari/537.36')
-        self.stop_event = Event()
 
     def login(self, user_info: UserInfo):
         data = {
@@ -96,7 +99,7 @@ class Agent:
         response = self.session.get(URL.LOGOUT_API)
         if response.status_code == 200:
             self.session.close()
-            self.session = requests.session()
+            self._reset_session()
         else:
             raise ValueError('Response.status_code is not 200.\n' + str(response))
 
