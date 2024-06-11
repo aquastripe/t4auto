@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QApplication, QWidget, QGridLayout
 
 from t4autolibs.gui.item_table import ItemTable
 from t4autolibs.gui.login import Login, Browser
-from take_items_offline import Agent
+from t4autolibs.cores import Agent
 
 
 class T4AutoGUI(QWidget):

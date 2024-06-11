@@ -3,7 +3,7 @@ from PySide6.QtCore import Slot, Qt
 from PySide6.QtWidgets import QFormLayout, QGroupBox, QLineEdit, QHBoxLayout, QCheckBox, QPushButton, QVBoxLayout, \
     QRadioButton
 
-from take_items_offline import UserInfo, LoginStatus
+from t4autolibs.cores import UserInfo, LoginStatus
 
 
 class Login:

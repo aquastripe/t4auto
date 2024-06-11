@@ -8,7 +8,7 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QGridLayout, QGroupBox, QTableWidget, QPushButton, QHeaderView, QTableWidgetItem, \
     QTimeEdit, QMenu
 
-from take_items_offline import ActionRow, ActionType
+from t4autolibs.cores import ActionRow, ActionType
 
 COLUMN_NAMES = ['Location', 'Search item by keyword', 'Start time', 'End time', 'Reason', 'Delete the row']
 
