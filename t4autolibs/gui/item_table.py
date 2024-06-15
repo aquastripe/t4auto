@@ -38,7 +38,6 @@ class ItemTable(Configurable):
         self.table = QTableWidget()
         self.draw_table_header()
         self.table.cellClicked.connect(self.show_location)
-        self.add_empty_row()
         self.layout.addWidget(self.table, 0, 0, 1, 3)
 
         self.add_row_button = QPushButton('Add a row')
@@ -90,15 +89,23 @@ class ItemTable(Configurable):
     @Slot()
     def add_empty_row(self):
         row_idx = self.table.rowCount()
-        store = Store(-1, '')
-        self.add_row(row_idx, store, (0, 0), (23, 59), '')
+        store = {
+            'id': -1,
+            'name': '',
+        }
+        self.add_row(row_idx, store, '', (0, 0), (23, 59), '')
 
-    def add_row(self, row_idx: int, store: Store, start_time: tuple[int, int], end_time: tuple[int, int], reason: str):
+    def add_row(self, row_idx: int, store: dict, keyword: str, start_time: tuple[int, int], end_time: tuple[int, int],
+                reason: str):
         self.table.insertRow(row_idx)
 
+        store = Store(store['id'], store['name'])
         store_item = QTableWidgetItem(store.name)
         store_item.setData(Qt.UserRole, store)
         self.table.setItem(row_idx, ColumnIdx.LOCATION, store_item)
+
+        keyword_item = QTableWidgetItem(keyword)
+        self.table.setItem(row_idx, ColumnIdx.KEYWORD, keyword_item)
 
         start_time_edit = QTimeEdit(QTime(*start_time))
         start_time_edit.setDisplayFormat('hh:mm')
@@ -187,7 +194,8 @@ class ItemTable(Configurable):
             return
 
         for row in config['ItemTable']:
-            self.add_row(row['row_idx'], row['location'], row['start_time'], row['end_time'], row['reason'])
+            self.add_row(row['row_idx'], row['store'], row['keyword'], row['start_time'], row['end_time'],
+                         row['reason'])
 
     def dump_config(self) -> dict:
         config = {
@@ -197,21 +205,22 @@ class ItemTable(Configurable):
             row = {
                 'row_idx': row_idx,
             }
-
-            start_time = self.table.cellWidget(row_idx, ColumnIdx.START).time().toPython()  # type: datetime.time
-            row['start_time'] = (start_time.hour, start_time.minute)
-
-            end_time = self.table.cellWidget(row_idx, ColumnIdx.END).time().toPython()  # type: datetime.time
-            row['end_time'] = (end_time.hour, end_time.minute)
-
             store = self.table.item(row_idx, ColumnIdx.LOCATION).data(Qt.UserRole)  # type: Store
-            row['location'] = {
+            row['store'] = {
                 'id': store.id,
                 'name': store.name,
             }
+            row['keyword'] = self.table.item(row_idx, ColumnIdx.KEYWORD).text() \
+                if self.table.item(row_idx, ColumnIdx.KEYWORD) else ''
 
+            start_time = self.table.cellWidget(row_idx, ColumnIdx.START).time().toPython()  # type: datetime.time
+            row['start_time'] = (start_time.hour, start_time.minute)
+            end_time = self.table.cellWidget(row_idx, ColumnIdx.END).time().toPython()  # type: datetime.time
+            row['end_time'] = (end_time.hour, end_time.minute)
             reason = self.table.item(row_idx, ColumnIdx.REASON).text() \
                 if self.table.item(row_idx, ColumnIdx.REASON) else ''
             row['reason'] = reason
+
+            config['ItemTable'].append(row)
 
         return config
