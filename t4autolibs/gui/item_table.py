@@ -105,10 +105,10 @@ class ItemTable(Configurable):
         start_time_edit.setFrame(False)
         self.table.setCellWidget(row_idx, ColumnIdx.START, start_time_edit)
 
-        end_time = QTimeEdit(QTime(*end_time))
-        end_time.setDisplayFormat('hh:mm')
-        end_time.setFrame(False)
-        self.table.setCellWidget(row_idx, ColumnIdx.END, end_time)
+        end_time_edit = QTimeEdit(QTime(*end_time))
+        end_time_edit.setDisplayFormat('hh:mm')
+        end_time_edit.setFrame(False)
+        self.table.setCellWidget(row_idx, ColumnIdx.END, end_time_edit)
 
         reason_edit = QTableWidgetItem(reason)
         self.table.setItem(row_idx, ColumnIdx.REASON, reason_edit)
