@@ -83,23 +83,24 @@ class Login:
         self.logout_button.setEnabled(True)
 
 
-class Browser:
+class WindowSize:
+    _SIZES = [
+        ('800 × 600', (800, 600)),
+        ('1024 × 768', (1024, 768)),
+        ('1920 × 1080', (1920, 1080)),
+    ]
 
     def __init__(self):
-        self.browser_layout = QVBoxLayout()
+        self.window_size_layout = QVBoxLayout()
 
-        chrome_button = QRadioButton('Chrome')
-        chrome_button.click()
-        chrome_button.setEnabled(False)  # TODO: future feature
-        self.browser_layout.addWidget(chrome_button)
+        first_button_is_checked = False
+        for size in self._SIZES:
+            button = QRadioButton(size[0])
+            button.setEnabled(False)
+            if not first_button_is_checked:
+                button.setChecked(True)
+                first_button_is_checked = True
+            self.window_size_layout.addWidget(button)
 
-        edge_button = QRadioButton('Edge')
-        edge_button.setEnabled(False)
-        self.browser_layout.addWidget(edge_button)
-
-        firefox_button = QRadioButton('Firefox')
-        firefox_button.setEnabled(False)
-        self.browser_layout.addWidget(firefox_button)
-
-        self.group = QGroupBox('Browser')
-        self.group.setLayout(self.browser_layout)
+        self.group = QGroupBox('Window Size')
+        self.group.setLayout(self.window_size_layout)
