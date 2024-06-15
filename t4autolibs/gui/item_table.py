@@ -110,7 +110,8 @@ class ItemTable(Configurable):
         end_time.setFrame(False)
         self.table.setCellWidget(row_idx, ColumnIdx.END, end_time)
 
-        self.table.item(row_idx, ColumnIdx.REASON).setText(reason)
+        reason_edit = QTableWidgetItem(reason)
+        self.table.setItem(row_idx, ColumnIdx.REASON, reason_edit)
 
         delete_button = QPushButton('Delete')
         delete_button.clicked.connect(self.del_row)
