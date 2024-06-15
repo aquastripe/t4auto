@@ -1,6 +1,7 @@
 import datetime
 from enum import IntEnum
 from threading import Thread
+from typing import NoReturn
 
 from PySide6 import QtGui
 from PySide6.QtCore import Slot, QTime, Qt
@@ -8,7 +9,8 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QGridLayout, QGroupBox, QTableWidget, QPushButton, QHeaderView, QTableWidgetItem, \
     QTimeEdit, QMenu
 
-from t4autolibs.cores import ActionRow, ActionType
+from t4autolibs.cores import ActionRow, ActionType, Store
+from t4autolibs.gui.config import Configurable
 
 COLUMN_NAMES = ['Location', 'Search item by keyword', 'Start time', 'End time', 'Reason', 'Delete the row']
 
@@ -22,7 +24,7 @@ class ColumnIdx(IntEnum):
     DELETE = 5
 
 
-class ItemTable:
+class ItemTable(Configurable):
 
     def __init__(self, agent):
         self.agent = agent
@@ -36,12 +38,12 @@ class ItemTable:
         self.table = QTableWidget()
         self.draw_table_header()
         self.table.cellClicked.connect(self.show_location)
-        self.add_row()
+        self.add_empty_row()
         self.layout.addWidget(self.table, 0, 0, 1, 3)
 
         self.add_row_button = QPushButton('Add a row')
         self.add_row_button.setIcon(QtGui.QIcon('_internal/icons/add.svg'))
-        self.add_row_button.clicked.connect(self.add_row)
+        self.add_row_button.clicked.connect(self.add_empty_row)
         self.layout.addWidget(self.add_row_button, 1, 0)
 
         self.start_automation_button = QPushButton('Start taking items offline')
@@ -86,21 +88,29 @@ class ItemTable:
         self.table.horizontalHeader().setSectionResizeMode(ColumnIdx.DELETE, QHeaderView.ResizeMode.ResizeToContents)
 
     @Slot()
-    def add_row(self):
+    def add_empty_row(self):
         row_idx = self.table.rowCount()
+        store = Store(-1, '')
+        self.add_row(row_idx, store, (0, 0), (23, 59), '')
+
+    def add_row(self, row_idx: int, store: Store, start_time: tuple[int, int], end_time: tuple[int, int], reason: str):
         self.table.insertRow(row_idx)
 
-        self.table.setItem(row_idx, ColumnIdx.LOCATION, QTableWidgetItem(''))
+        store_item = QTableWidgetItem(store.name)
+        store_item.setData(Qt.UserRole, store)
+        self.table.setItem(row_idx, ColumnIdx.LOCATION, store_item)
 
-        start_time = QTimeEdit(QTime(0, 0))
-        start_time.setDisplayFormat('hh:mm')
-        start_time.setFrame(False)
-        self.table.setCellWidget(row_idx, ColumnIdx.START, start_time)
+        start_time_edit = QTimeEdit(QTime(*start_time))
+        start_time_edit.setDisplayFormat('hh:mm')
+        start_time_edit.setFrame(False)
+        self.table.setCellWidget(row_idx, ColumnIdx.START, start_time_edit)
 
-        end_time = QTimeEdit(QTime(23, 59))
+        end_time = QTimeEdit(QTime(*end_time))
         end_time.setDisplayFormat('hh:mm')
         end_time.setFrame(False)
         self.table.setCellWidget(row_idx, ColumnIdx.END, end_time)
+
+        self.table.item(row_idx, ColumnIdx.REASON).setText(reason)
 
         delete_button = QPushButton('Delete')
         delete_button.clicked.connect(self.del_row)
@@ -145,7 +155,7 @@ class ItemTable:
             if not self.table.item(row_idx, ColumnIdx.LOCATION):
                 raise ValueError('Location does not selected.')
 
-            store_id = self.table.item(row_idx, ColumnIdx.LOCATION).data(Qt.UserRole).id
+            store = self.table.item(row_idx, ColumnIdx.LOCATION).data(Qt.UserRole)
             reason = self.table.item(row_idx, ColumnIdx.REASON).text() \
                 if self.table.item(row_idx, ColumnIdx.REASON) else ''
 
@@ -155,7 +165,7 @@ class ItemTable:
                 action_time=start_datetime,
                 action_type=ActionType.START,
                 reason=reason,
-                store_id=store_id,
+                store_id=store.id,
             )
             item_row_list.append(item_row)
             item_row = ActionRow(
@@ -164,9 +174,43 @@ class ItemTable:
                 action_time=end_datetime,
                 action_type=ActionType.END,
                 reason=reason,
-                store_id=store_id,
+                store_id=store.id,
             )
             item_row_list.append(item_row)
             i += 1
 
         return item_row_list
+
+    def load_config(self, config: dict) -> NoReturn:
+        if config['ItemTable'] is None:
+            return
+
+        for row in config['ItemTable']:
+            self.add_row(row['row_idx'], row['location'], row['start_time'], row['end_time'], row['reason'])
+
+    def dump_config(self) -> dict:
+        config = {
+            'ItemTable': [],
+        }
+        for row_idx in range(self.table.rowCount()):
+            row = {
+                'row_idx': row_idx,
+            }
+
+            start_time = self.table.cellWidget(row_idx, ColumnIdx.START).time().toPython()  # type: datetime.time
+            row['start_time'] = (start_time.hour, start_time.minute)
+
+            end_time = self.table.cellWidget(row_idx, ColumnIdx.END).time().toPython()  # type: datetime.time
+            row['end_time'] = (end_time.hour, end_time.minute)
+
+            store = self.table.item(row_idx, ColumnIdx.LOCATION).data(Qt.UserRole)  # type: Store
+            row['location'] = {
+                'id': store.id,
+                'name': store.name,
+            }
+
+            reason = self.table.item(row_idx, ColumnIdx.REASON).text() \
+                if self.table.item(row_idx, ColumnIdx.REASON) else ''
+            row['reason'] = reason
+
+        return config
