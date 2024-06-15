@@ -12,7 +12,7 @@ class T4AutoGUI(QWidget):
 
         self.agent = Agent()
         self.login = Login(self.agent)
-        self.window_size = WindowSize()
+        self.window_size = WindowSize(self)
         self.item_table = ItemTable(self.agent)
 
         # Compose all groups
