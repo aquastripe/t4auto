@@ -34,12 +34,12 @@ class Login:
 
         self._is_logged_in = False
         self.login_button = QPushButton('Login')
-        self.login_button.setIcon(QtGui.QIcon('icons/login_24dp_FILL0_wght400_GRAD0_opsz24.svg'))
+        self.login_button.setIcon(QtGui.QIcon('icons/login.svg'))
         self.login_button.clicked.connect(self.login)
         self.checkbox_layout.addWidget(self.login_button)
 
         self.logout_button = QPushButton('Logout')
-        self.logout_button.setIcon(QtGui.QIcon('icons/logout_24dp_FILL0_wght400_GRAD0_opsz24.svg'))
+        self.logout_button.setIcon(QtGui.QIcon('icons/logout.svg'))
         self.logout_button.clicked.connect(self.logout)
         self.logout_button.setEnabled(False)
         self.checkbox_layout.addWidget(self.logout_button)

@@ -40,17 +40,17 @@ class ItemTable:
         self.layout.addWidget(self.table, 0, 0, 1, 3)
 
         self.add_row_button = QPushButton('Add a row')
-        self.add_row_button.setIcon(QtGui.QIcon('icons/add_box_FILL0_wght400_GRAD0_opsz24.svg'))
+        self.add_row_button.setIcon(QtGui.QIcon('icons/add.svg'))
         self.add_row_button.clicked.connect(self.add_row)
         self.layout.addWidget(self.add_row_button, 1, 0)
 
         self.start_automation_button = QPushButton('Start taking items offline')
-        self.start_automation_button.setIcon(QtGui.QIcon('icons/play_circle_FILL0_wght400_GRAD0_opsz24.svg'))
+        self.start_automation_button.setIcon(QtGui.QIcon('icons/play.svg'))
         self.start_automation_button.clicked.connect(self.start_automation)
         self.layout.addWidget(self.start_automation_button, 1, 1)
 
         self.stop_automation_button = QPushButton('Stop')
-        self.stop_automation_button.setIcon(QtGui.QIcon('icons/stop_circle_FILL0_wght400_GRAD0_opsz24.svg'))
+        self.stop_automation_button.setIcon(QtGui.QIcon('icons/stop.svg'))
         self.stop_automation_button.clicked.connect(self.stop_automation)
         self.stop_automation_button.setEnabled(False)
         self.layout.addWidget(self.stop_automation_button, 1, 2)
