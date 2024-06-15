@@ -103,63 +103,45 @@ class Agent:
         else:
             raise ValueError('Response.status_code is not 200.\n' + str(response))
 
-    def take_items_offline_by_search(self, item: ActionRow):
-        # select all items by the keyword
+    def search_items_from_api(self, keyword, api):
         n_items_per_page = 100
         params = {
-            'qv': item.keyword,
+            'qv': keyword,
             'start': 0,
             'limit': n_items_per_page,
         }
-        response = self.session.get(URL.GET_ITEMS_API, params=params).json()
+        response = self.session.get(api, params=params).json()
         if not response['success']:
             raise ValueError('Response["success"] is false.\n' + str(response))
-
         items = response['data']
         start_idx = 0
         while start_idx + response['count'] < response['total']:
             start_idx += n_items_per_page
             params['start'] = start_idx
-            response = self.session.get(URL.GET_ITEMS_API, params=params).json()
+            response = self.session.get(api, params=params).json()
             if not response['success']:
                 raise ValueError('Response["success"] is false.\n' + str(response))
 
             items += response['data']
+        return items
+
+    def take_items_offline_by_search(self, action_row: ActionRow):
+        items = self.search_items_from_api(action_row.keyword, URL.GET_ITEMS_API)
 
         plu_codes = [item['PLUCode'] for item in items]
         payload = {
             'PLUCode': plu_codes,
-            'CustomReason': item.reason if item.reason else 'Deleted by t4auto',
+            'CustomReason': action_row.reason if action_row.reason else 'Deleted by t4auto',
             'Reason': 'Custom',
-            'StoreID': [item.store_id],
+            'StoreID': [action_row.store_id],
         }
         response = self.session.post(URL.UPDATE_ITEMS_API, data=payload).json()
         if not response['success']:
             raise ValueError('Response["success"] is false.\n' + str(response))
-        logging.info(f'{item.keyword} is offline, total {len(items)} items.')
+        logging.info(f'{action_row.keyword} is offline, total {len(items)} items.')
 
-    def take_items_online_by_search(self, item: ActionRow):
-        # select all items by the keyword
-        n_items_per_page = 100
-        params = {
-            'qv': item.keyword,
-            'start': 0,
-            'limit': n_items_per_page,
-        }
-        response = self.session.get(URL.UPDATE_ITEMS_API, params=params).json()
-        if not response['success']:
-            raise ValueError('Response["success"] is false.\n' + str(response))
-
-        items = response['data']
-        start_idx = 0
-        while start_idx + response['count'] < response['total']:
-            start_idx += n_items_per_page
-            params['start'] = start_idx
-            response = self.session.get(URL.UPDATE_ITEMS_API, params=params).json()
-            if not response['success']:
-                raise ValueError('Response["success"] is false.\n' + str(response))
-
-            items += response['data']
+    def take_items_online_by_search(self, action_row: ActionRow):
+        items = self.search_items_from_api(action_row.keyword, URL.UPDATE_ITEMS_API)
 
         item_ids = [item['ID'] for item in items]
         payload = {
@@ -168,7 +150,7 @@ class Agent:
         response = self.session.delete(URL.UPDATE_ITEMS_API, data=payload).json()
         if not response['success']:
             raise ValueError('Response["success"] is false.\n' + str(response))
-        logging.info(f'{item.keyword} is online, total {len(items)} items.')
+        logging.info(f'{action_row.keyword} is online, total {len(items)} items.')
 
     def update_rules_loop(self, actions: list[ActionRow]):
         actions.sort()
