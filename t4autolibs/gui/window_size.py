@@ -54,7 +54,7 @@ class WindowSize(Configurable):
         if config['WindowSize'] is None:
             return
 
-        self.resize_main_window(tuple(config['WindowSize']))
+        self.resize_main_window(config['WindowSize'])
 
     def dump_config(self) -> dict:
         config = {
