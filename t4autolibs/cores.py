@@ -136,7 +136,39 @@ class Agent:
         response = self.session.post(URL.UPDATE_ITEMS_API, data=payload).json()
         if not response['success']:
             raise ValueError('Response["success"] is false.\n' + str(response))
-        logging.info(f'{item.keyword} was checked and saved.')
+        logging.info(f'{item.keyword} is offline, total {len(items)} items.')
+
+    def take_items_online_by_search(self, item: ActionRow):
+        # select all items by the keyword
+        n_items_per_page = 100
+        params = {
+            'qv': item.keyword,
+            'start': 0,
+            'limit': n_items_per_page,
+        }
+        response = self.session.get(URL.UPDATE_ITEMS_API, params=params).json()
+        if not response['success']:
+            raise ValueError('Response["success"] is false.\n' + str(response))
+
+        items = response['data']
+        start_idx = 0
+        while start_idx + response['count'] < response['total']:
+            start_idx += n_items_per_page
+            params['start'] = start_idx
+            response = self.session.get(URL.UPDATE_ITEMS_API, params=params).json()
+            if not response['success']:
+                raise ValueError('Response["success"] is false.\n' + str(response))
+
+            items += response['data']
+
+        item_ids = [item['ID'] for item in items]
+        payload = {
+            'IDs': item_ids,
+        }
+        response = self.session.delete(URL.UPDATE_ITEMS_API, data=payload).json()
+        if not response['success']:
+            raise ValueError('Response["success"] is false.\n' + str(response))
+        logging.info(f'{item.keyword} is online, total {len(items)} items.')
 
     def update_rules_loop(self, actions: list[ActionRow]):
         actions.sort()
@@ -152,7 +184,7 @@ class Agent:
                 if actions[i].action_type == ActionType.START:
                     self.take_items_offline_by_search(actions[i])
                 else:
-                    print('Take items online.')
+                    self.take_items_online_by_search(actions[i])
 
             actions[i].action_time += datetime.timedelta(days=1)
 
