@@ -2,21 +2,25 @@
 
 Automation tools for T4.
 
-## Run as Python script
+## Usage
 
-### Prerequisites
+Double click `t4auto.exe`.
 
-#### Install Dependency Packages
+![](assets/example-0.png)
 
-```
-pip install selenium pandas pyside6
-```
+Steps:
 
-### Usage
-
-```
-python t4auto.py
-```
+1. Fill in **Username** and **Password**.
+2. Click **Login**.
+3. For each row, fill in the columns:
+    - Location (**Required**)
+    - Keyword (**Required**)
+    - Start time (**Required**)
+    - End time (**Required**)
+    - Reason (Optional)
+4. If multiple items are needed to take offline and online, click **Add a row**.
+5. When the items are ready, click **Start taking items offline**.
+6. Click **Stop** before exiting the app.
 
 
 ## License
