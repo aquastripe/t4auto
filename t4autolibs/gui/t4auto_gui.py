@@ -2,7 +2,8 @@ from PySide6.QtWidgets import QWidget, QGridLayout
 
 from t4autolibs.cores import Agent
 from t4autolibs.gui.item_table import ItemTable
-from t4autolibs.gui.login import Login, WindowSize
+from t4autolibs.gui.login import Login
+from t4autolibs.gui.window_size import WindowSize
 
 
 class T4AutoGUI(QWidget):
