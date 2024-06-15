@@ -80,5 +80,3 @@ class Login:
     def _unset_login_button(self):
         self.login_button.setEnabled(False)
         self.logout_button.setEnabled(True)
-
-
