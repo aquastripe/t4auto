@@ -28,14 +28,8 @@ jobs:
         run: |
           pyinstaller t4auto.spec
 
-      - run:
-          cd dist
-
       - name: Zip files
         run: Compress-Archive -Path dist/t4auto/* -Destination "t4auto-${{ github.ref_name }}.zip"
-
-      - run:
-          cd ..
 
       - name: Release
         env:
