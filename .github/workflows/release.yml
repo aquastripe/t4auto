@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - '*'
+    paths:
+      - '.github/workflows/release.yml'
 
 jobs:
   build:
@@ -18,7 +20,9 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
-      - run: pip install -r requirements.txt
+      - run: |
+          pip install -r requirements.txt
+          pip list
 
       - name: Build the executable file
         run: |
@@ -32,7 +36,7 @@ jobs:
 
   release:
     needs: build
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: write
 
@@ -44,14 +48,19 @@ jobs:
         with:
           name: t4auto
 
+      - name: Install GitHub CLI
+        run: sudo apt-get install gh -y
+
+      - name: Authenticate with GitHub CLI
+        run: gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
+
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref_name }}
         run: |
-          $files = Get-ChildItem -Path dist -Recurse | Resolve-Path -Relative
-          gh release create "${tag}" `
-              --repo="$GITHUB_REPOSITORY" `
-              --title="${GITHUB_REPOSITORY#*/} ${tag#v}" `
-              --notes "Release for ${tag}" `
-              $files
+          tag=${{ github.ref_name }}
+          gh release create "$tag" \
+              --repo="$GITHUB_REPOSITORY" \
+              --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
+              --notes "Release for tag $tag" \
+              "dist/**/*"
