@@ -28,11 +28,15 @@ jobs:
         run: |
           pyinstaller t4auto.spec
 
+      - run:
+          cd dist
+
       - name: Zip files
         uses: montudor/action-zip@v1
-        run: |
-          cd dist
-          zip -r "../t4auto-${{ github.ref_name }}.zip" .
+        with:
+          args: zip -r "../t4auto-${{ github.ref_name }}.zip" .
+
+      - run:
           cd ..
 
       - name: Release
