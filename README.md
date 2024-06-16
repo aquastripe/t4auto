@@ -1,6 +1,6 @@
-# t4auto
+# T4 Auto
 
-Automation tools for T4.
+A tool that takes items offline at specified times for T4.
 
 ## Usage
 
@@ -15,11 +15,12 @@ Steps:
 3. For each row, fill in the columns:
     - Location (**Required**)
     - Keyword (**Required**)
-    - Start time (**Required**)
-    - End time (**Required**)
+    - Start time (**Required**): The time to take items offline.
+    - End time (**Required**): The time to restore items.
     - Reason (Optional)
-4. If multiple items are needed to take offline and online, click **Add a row**.
+4. Click **Add a row** to add more items.
 5. When the items are ready, click **Start taking items offline**.
+   A bot is scheduled to perform tasks; therefore, do not close the application.
 6. Click **Stop** before exiting the app.
 
 
