@@ -32,9 +32,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: t4auto
-          path: dist/**/*
+          path: dist
 
-  release:
+  test_release:
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -58,9 +58,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          pwd
+          ll
           tag=${{ github.ref_name }}
-          gh release create "$tag" \
-              --repo="$GITHUB_REPOSITORY" \
-              --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
-              --notes "Release for tag $tag" \
-              t4auto.zip
