@@ -1,16 +1,18 @@
 from PySide6 import QtGui
 from PySide6.QtCore import Slot, Qt
-from PySide6.QtWidgets import QFormLayout, QGroupBox, QLineEdit, QHBoxLayout, QCheckBox, QPushButton, QWidget
+from PySide6.QtWidgets import QFormLayout, QGroupBox, QLineEdit, QHBoxLayout, QCheckBox, QPushButton
 
 from t4autolibs.cores import UserInfo, LoginStatus, Agent
 from t4autolibs.gui.item_table import ItemTable
+from t4autolibs.gui.agent_status import AgentStatus
 
 
 class Login:
 
-    def __init__(self, agent: Agent, item_table: ItemTable):
+    def __init__(self, agent: Agent, item_table: ItemTable, agent_status: AgentStatus):
         self.agent = agent
         self.item_table = item_table
+        self.agent_status = agent_status
 
         self.layout = QFormLayout()
         self.group = QGroupBox('Login info')
@@ -80,9 +82,11 @@ class Login:
         self.logout_button.setEnabled(False)
 
         self.item_table.set_initial_state()
+        self.agent_status.set_not_logged_in_status()
 
     def set_login_state(self):
         self.login_button.setEnabled(False)
         self.logout_button.setEnabled(True)
 
         self.item_table.set_ready_state()
+        self.agent_status.set_logged_in_status()

@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QWidget, QGridLayout, QMainWindow
 from t4autolibs.cores import Agent
 from t4autolibs.gui.item_table import ItemTable
 from t4autolibs.gui.login import Login
+from t4autolibs.gui.agent_status import AgentStatus
 from t4autolibs.gui.window_size import WindowSize
 
 
@@ -19,7 +20,8 @@ class Composition(QWidget):
         self.agent = Agent()
         self.window_size = WindowSize(self.main_window)
         self.item_table = ItemTable(self.agent)
-        self.login = Login(self.agent, self.item_table)
+        self.agent_status = AgentStatus()
+        self.login = Login(self.agent, self.item_table, self.agent_status)
 
         # Compose all groups
         self.main_layout = QGridLayout()

@@ -10,6 +10,9 @@ class MainWindow(QMainWindow):
         self.t4auto_gui = Composition(self)
         self.setCentralWidget(self.t4auto_gui)
 
+        self.statusBar().setSizeGripEnabled(False)
+        self.statusBar().addPermanentWidget(self.t4auto_gui.agent_status)
+
     def load_config_from_file(self):
         self.t4auto_gui.load_config_from_file()
 
