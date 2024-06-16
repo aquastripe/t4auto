@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - '*'
-    paths:
-      - '.github/workflows/release.yml'
 
   workflow_dispatch:
 
@@ -65,4 +63,4 @@ jobs:
               --repo="$GITHUB_REPOSITORY" \
               --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
               --notes "Release for tag $tag" \
-              "dist/**/*"
+              t4auto.zip
