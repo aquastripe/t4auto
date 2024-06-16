@@ -32,9 +32,7 @@ jobs:
           cd dist
 
       - name: Zip files
-        uses: montudor/action-zip@v1
-        with:
-          args: zip -r "../t4auto-${{ github.ref_name }}.zip" .
+        run: Compress-Archive -Path dist/t4auto/* -Destination "t4auto-${{ github.ref_name }}.zip"
 
       - run:
           cd ..
