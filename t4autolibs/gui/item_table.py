@@ -53,8 +53,33 @@ class ItemTable(Configurable):
         self.stop_automation_button = QPushButton('Stop')
         self.stop_automation_button.setIcon(QtGui.QIcon('_internal/icons/stop.svg'))
         self.stop_automation_button.clicked.connect(self.stop_automation)
-        self.stop_automation_button.setEnabled(False)
         self.layout.addWidget(self.stop_automation_button, 1, 2)
+
+        self.set_initial_state()
+
+    def set_initial_state(self):
+        for table_widget in self.group.findChildren(QTableWidget):  # type: QTableWidget
+            table_widget.setEnabled(False)
+
+        self.add_row_button.setEnabled(False)
+        self.start_automation_button.setEnabled(False)
+        self.stop_automation_button.setEnabled(False)
+
+    def set_ready_state(self):
+        for table_widget in self.group.findChildren(QTableWidget):  # type: QTableWidget
+            table_widget.setEnabled(True)
+
+        self.add_row_button.setEnabled(True)
+        self.start_automation_button.setEnabled(True)
+        self.stop_automation_button.setEnabled(False)
+
+    def set_running_state(self):
+        for table_widget in self.group.findChildren(QTableWidget):  # type: QTableWidget
+            table_widget.setEnabled(False)
+
+        self.add_row_button.setEnabled(False)
+        self.start_automation_button.setEnabled(False)
+        self.stop_automation_button.setEnabled(True)
 
     def show_location(self, row, column):
         if column != 0:

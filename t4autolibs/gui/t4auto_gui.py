@@ -16,9 +16,9 @@ class T4AutoGUI(QWidget):
         super().__init__()
 
         self.agent = Agent()
-        self.login = Login(self.agent)
         self.window_size = WindowSize(self)
         self.item_table = ItemTable(self.agent)
+        self.login = Login(self.agent, self.item_table)
 
         # Compose all groups
         self.main_layout = QGridLayout()

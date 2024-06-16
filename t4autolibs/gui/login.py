@@ -1,14 +1,16 @@
 from PySide6 import QtGui
 from PySide6.QtCore import Slot, Qt
-from PySide6.QtWidgets import QFormLayout, QGroupBox, QLineEdit, QHBoxLayout, QCheckBox, QPushButton
+from PySide6.QtWidgets import QFormLayout, QGroupBox, QLineEdit, QHBoxLayout, QCheckBox, QPushButton, QWidget
 
-from t4autolibs.cores import UserInfo, LoginStatus
+from t4autolibs.cores import UserInfo, LoginStatus, Agent
+from t4autolibs.gui.item_table import ItemTable
 
 
 class Login:
 
-    def __init__(self, agent):
+    def __init__(self, agent: Agent, item_table: ItemTable):
         self.agent = agent
+        self.item_table = item_table
 
         self.layout = QFormLayout()
         self.group = QGroupBox('Login info')
@@ -40,10 +42,11 @@ class Login:
         self.logout_button = QPushButton('Logout')
         self.logout_button.setIcon(QtGui.QIcon('_internal/icons/logout.svg'))
         self.logout_button.clicked.connect(self.logout)
-        self.logout_button.setEnabled(False)
         self.checkbox_layout.addWidget(self.logout_button)
 
         self.layout.addRow(self.checkbox_layout)
+
+        self.set_logout_state()
 
     @Slot(int)
     def show_password(self, state):
@@ -54,7 +57,6 @@ class Login:
 
     @Slot()
     def login(self):
-        self._unset_login_button()
         if not self._is_logged_in:
             self._is_logged_in = True
             user_info = UserInfo(self.username_edit.text(), self.password_edit.text())
@@ -62,21 +64,25 @@ class Login:
 
             # TODO: show message
             if login_status.success:
-                ...
+                self.set_login_state()
             else:
-                self._set_login_button()
+                self.set_logout_state()
 
     @Slot()
     def logout(self):
-        self._set_login_button()
+        self.set_logout_state()
         if self._is_logged_in:
             self._is_logged_in = False
             self.agent.logout()
 
-    def _set_login_button(self):
+    def set_logout_state(self):
         self.login_button.setEnabled(True)
         self.logout_button.setEnabled(False)
 
-    def _unset_login_button(self):
+        self.item_table.set_initial_state()
+
+    def set_login_state(self):
         self.login_button.setEnabled(False)
         self.logout_button.setEnabled(True)
+
+        self.item_table.set_ready_state()
