@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from functools import partial
 from typing import NoReturn
 
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QRadioButton, QGroupBox
+from PySide6.QtWidgets import QVBoxLayout, QRadioButton, QGroupBox, QMainWindow
 
 from t4autolibs.gui.config import Configurable
 
@@ -25,7 +25,7 @@ class WindowSize(Configurable):
         SizeInfo(IDX_MAXIMIZE_WINDOW, 'Maximize', (0, 0)),
     ]
 
-    def __init__(self, parent_window: QWidget):
+    def __init__(self, parent_window: QMainWindow):
         self.size_info = self._SIZE_INFO_LIST[0]
         self.parent_window = parent_window
         self.resize_main_window(self._SIZE_INFO_LIST[0])

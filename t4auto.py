@@ -2,17 +2,17 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
-from t4autolibs.gui.t4auto_gui import T4AutoGUI
+from t4autolibs.gui.main_window import MainWindow
 
 
 def main():
     app = QApplication(sys.argv)
     app.setApplicationName('T4 Auto')
-    t4auto_gui = T4AutoGUI()
-    t4auto_gui.load_config_from_file()
-    t4auto_gui.show()
+    main_window = MainWindow()
+    main_window.load_config_from_file()
+    main_window.show()
     app.exec()
-    t4auto_gui.dump_config_to_file()
+    main_window.dump_config_to_file()
 
 
 if __name__ == '__main__':
