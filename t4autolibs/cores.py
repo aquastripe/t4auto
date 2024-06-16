@@ -91,7 +91,8 @@ class Agent:
                 self.get_store_ids()
                 return LoginStatus(success=True, message='Login successfully')
             else:
-                return LoginStatus(success=False, message=response['additional_info']['validation_errors'][0]['msg'])
+                return LoginStatus(success=False, message='Login failed:'
+                                                          + response['additional_info']['validation_errors'][0]['msg'])
         else:
             raise ValueError('')
 

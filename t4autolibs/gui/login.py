@@ -1,6 +1,6 @@
 from PySide6 import QtGui
 from PySide6.QtCore import Slot, Qt
-from PySide6.QtWidgets import QFormLayout, QGroupBox, QLineEdit, QHBoxLayout, QCheckBox, QPushButton
+from PySide6.QtWidgets import QFormLayout, QGroupBox, QLineEdit, QHBoxLayout, QCheckBox, QPushButton, QLabel
 
 from t4autolibs.cores import UserInfo, LoginStatus, Agent
 from t4autolibs.gui.item_table import ItemTable
@@ -48,6 +48,9 @@ class Login:
 
         self.layout.addRow(self.checkbox_layout)
 
+        self.login_message = QLabel('')
+        self.layout.addRow(self.login_message)
+
         self.set_logout_state()
 
     @Slot(int)
@@ -64,11 +67,14 @@ class Login:
             user_info = UserInfo(self.username_edit.text(), self.password_edit.text())
             login_status = self.agent.login(user_info)  # type: LoginStatus
 
-            # TODO: show message
             if login_status.success:
                 self.set_login_state()
+                self.login_message.setStyleSheet('color: green')
             else:
+                self._is_logged_in = False
                 self.set_logout_state()
+                self.login_message.setStyleSheet('color: red')
+            self.login_message.setText(login_status.message)
 
     @Slot()
     def logout(self):
