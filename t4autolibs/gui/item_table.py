@@ -9,7 +9,8 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QGridLayout, QGroupBox, QTableWidget, QPushButton, QHeaderView, QTableWidgetItem, \
     QTimeEdit, QMenu
 
-from t4autolibs.cores import ActionRow, ActionType, Store
+from t4autolibs.cores import ActionRow, ActionType, Store, Agent
+from t4autolibs.gui.agent_status import AgentStatus
 from t4autolibs.gui.config import Configurable
 
 COLUMN_NAMES = ['Location', 'Search item by keyword', 'Start time', 'End time', 'Reason', 'Delete the row']
@@ -26,8 +27,9 @@ class ColumnIdx(IntEnum):
 
 class ItemTable(Configurable):
 
-    def __init__(self, agent):
+    def __init__(self, agent: Agent, agent_status: AgentStatus):
         self.agent = agent
+        self.agent_status = agent_status
 
         # Take items offline group
         self.layout = QGridLayout()
@@ -80,6 +82,7 @@ class ItemTable(Configurable):
         self.add_row_button.setEnabled(False)
         self.start_automation_button.setEnabled(False)
         self.stop_automation_button.setEnabled(True)
+        self.agent_status.set_running_status()
 
     def show_location(self, row, column):
         if column != 0:
@@ -161,14 +164,17 @@ class ItemTable(Configurable):
             thread = Thread(target=self.agent.update_rules_loop, args=(item_row_list,))
             thread.start()
             self.stop_automation_button.setEnabled(True)
+            self.agent_status.set_running_status()
         else:
             self.start_automation_button.setEnabled(True)
+            self.agent_status.set_logged_in_status()
 
     @Slot()
     def stop_automation(self):
         self.stop_automation_button.setEnabled(False)
         self.agent.stop()
         self.start_automation_button.setEnabled(True)
+        self.agent_status.set_logged_in_status()
 
     def collect_items_from_table(self):
         item_row_list = []

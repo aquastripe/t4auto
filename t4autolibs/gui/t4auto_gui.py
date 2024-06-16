@@ -19,8 +19,8 @@ class Composition(QWidget):
         self.main_window = main_window
         self.agent = Agent()
         self.window_size = WindowSize(self.main_window)
-        self.item_table = ItemTable(self.agent)
         self.agent_status = AgentStatus()
+        self.item_table = ItemTable(self.agent, self.agent_status)
         self.login = Login(self.agent, self.item_table, self.agent_status)
 
         # Compose all groups
