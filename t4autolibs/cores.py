@@ -9,7 +9,6 @@ import requests
 
 @dataclass
 class URL:
-    LOGIN_PAGE = 'https://t4australia.redcatcloud.com.au/auth/login'
     LOGIN_API = 'https://t4australia.redcatcloud.com.au/api/v1/login'
     LOGOUT_API = 'https://t4australia.redcatcloud.com.au/auth/logout'
     GET_ITEMS_API = 'https://t4australia.redcatcloud.com.au/api/v1/plus-active/'
