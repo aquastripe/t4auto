@@ -1,6 +1,5 @@
 import datetime
 from enum import IntEnum
-from threading import Thread
 from typing import NoReturn
 
 from PySide6 import QtGui
@@ -9,7 +8,7 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QGridLayout, QGroupBox, QTableWidget, QPushButton, QHeaderView, QTableWidgetItem, \
     QTimeEdit, QMenu
 
-from t4autolibs.cores import ActionRow, ActionType, Store, Agent
+from t4autolibs.cores import ActionRowV2, ActionType, Store, AgentV2
 from t4autolibs.gui.agent_status import AgentStatus
 from t4autolibs.gui.config import Configurable
 
@@ -27,7 +26,7 @@ class ColumnIdx(IntEnum):
 
 class ItemTable(Configurable):
 
-    def __init__(self, agent: Agent, agent_status: AgentStatus):
+    def __init__(self, agent: AgentV2, agent_status: AgentStatus):
         self.agent = agent
         self.agent_status = agent_status
 
@@ -159,74 +158,71 @@ class ItemTable(Configurable):
     @Slot()
     def start_automation(self):
         self.start_automation_button.setEnabled(False)
-        item_row_list = self.collect_items_from_table()
-        if len(item_row_list) > 0:
-            thread = Thread(target=self.agent.update_rules_loop, args=(item_row_list,))
-            thread.start()
-            self.stop_automation_button.setEnabled(True)
-            self.agent_status.set_running_status()
+        self.stop_automation_button.setEnabled(True)
+        self.agent_status.set_running_status()
+
+        action_row_list = self.collect_action_rows_from_table()
+        if len(action_row_list) > 0:
+            self.agent.start_scheduler(action_row_list)
         else:
             self.start_automation_button.setEnabled(True)
+            self.stop_automation_button.setEnabled(False)
             self.agent_status.set_logged_in_status()
 
     @Slot()
     def stop_automation(self):
-        self.stop_automation_button.setEnabled(False)
-        self.agent.stop()
         self.start_automation_button.setEnabled(True)
+        self.stop_automation_button.setEnabled(False)
         self.agent_status.set_logged_in_status()
+        self.agent.stop_scheduler()
 
-    def collect_items_from_table(self):
-        item_row_list = []
+    def collect_action_rows_from_table(self):
+        action_row_list = []
         now = datetime.datetime.now()
-        i = 0
         for row_idx in range(self.table.rowCount()):
-            if self.table.item(row_idx, ColumnIdx.KEYWORD):
-                keyword = self.table.item(row_idx, ColumnIdx.KEYWORD).text()
-            else:
+            keyword = self.table.item(row_idx, ColumnIdx.KEYWORD).text()
+            if keyword == '':
+                # Keyword is not set; skipped.
+                continue
+
+            store = self.table.item(row_idx, ColumnIdx.LOCATION).data(Qt.UserRole)
+            if store.id == -1:
+                # Location is not set; skipped.
                 continue
 
             start_time = self.table.cellWidget(row_idx, ColumnIdx.START).time().toPython()  # type: datetime.time
             start_datetime = now.replace(hour=start_time.hour, minute=start_time.minute, second=start_time.second)
             end_time = self.table.cellWidget(row_idx, ColumnIdx.END).time().toPython()  # type: datetime.time
             end_datetime = now.replace(hour=end_time.hour, minute=end_time.minute, second=end_time.second)
+            reason = self.table.item(row_idx, ColumnIdx.REASON).text()
 
-            if not self.table.item(row_idx, ColumnIdx.LOCATION):
-                raise ValueError('Location does not selected.')
-
-            store = self.table.item(row_idx, ColumnIdx.LOCATION).data(Qt.UserRole)
-            reason = self.table.item(row_idx, ColumnIdx.REASON).text() \
-                if self.table.item(row_idx, ColumnIdx.REASON) else ''
-
-            item_row = ActionRow(
-                action_idx=i,
+            item_row = ActionRowV2(
                 keyword=keyword,
                 action_time=start_datetime,
                 action_type=ActionType.START,
                 reason=reason,
                 store_id=store.id,
             )
-            item_row_list.append(item_row)
-            item_row = ActionRow(
-                action_idx=i,
+            action_row_list.append(item_row)
+            item_row = ActionRowV2(
                 keyword=keyword,
                 action_time=end_datetime,
                 action_type=ActionType.END,
                 reason=reason,
                 store_id=store.id,
             )
-            item_row_list.append(item_row)
-            i += 1
+            action_row_list.append(item_row)
 
-        return item_row_list
+        return action_row_list
 
     def load_config(self, config: dict) -> NoReturn:
         if config['ItemTable'] is None:
             return
 
         for row in config['ItemTable']:
-            self.add_row(row['row_idx'], row['store'], row['keyword'], row['start_time'], row['end_time'],
-                         row['reason'])
+            self.add_row(
+                row['row_idx'], row['store'], row['keyword'], row['start_time'], row['end_time'], row['reason']
+            )
 
     def dump_config(self) -> dict:
         config = {

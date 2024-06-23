@@ -5,6 +5,7 @@ from enum import IntEnum
 from threading import Event
 
 import requests
+from apscheduler.schedulers.qt import QtScheduler
 
 
 @dataclass
@@ -35,6 +36,15 @@ class ActionRow:
 
     def __eq__(self, other):
         return (self.action_time, self.action_idx) == (other.action_time, other.action_idx)
+
+
+@dataclass
+class ActionRowV2:
+    keyword: str
+    action_time: datetime.datetime
+    action_type: ActionType
+    reason: str
+    store_id: int
 
 
 @dataclass
@@ -185,3 +195,137 @@ class Agent:
             store_name = data['name']
             store_id = data['value']
             self.stores.append(Store(store_id, store_name))
+
+
+class AgentV2:
+
+    def __init__(self):
+        self.stores = []
+        self._start_new_session()
+        self._scheduler = QtScheduler()
+
+    def _start_new_session(self):
+        self.session = requests.session()
+        self.session.headers['User-Agent'] = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                                              'AppleWebKit/537.36 (KHTML, like Gecko) '
+                                              'Chrome/124.0.0.0 Safari/537.36')
+
+    def login(self, user_info: UserInfo) -> LoginStatus:
+        data = {
+            'username': user_info.username,
+            'psw': user_info.password,
+            'auth_type': 'U',
+            'next': '/admin',
+            'save_session': True,
+        }
+        response = self.session.post(URL.LOGIN_API, data=data)
+        if response.status_code == 200:
+            response = response.json()
+            if response['success']:
+                self._get_store_ids()
+                success = True
+                message = 'Login successfully'
+            else:
+                success = False
+                message = f'Login failed: {response['additional_info']['validation_errors'][0]['msg']}'
+        else:
+            success = False
+            message = f'Login failed with HTTP error: HTTP status code is {response.status_code}'
+        return LoginStatus(success, message)
+
+    def _get_store_ids(self):
+        response = self.session.get(URL.GET_STORES_API, params={'restricted': 'true'}).json()
+        if not response['success']:
+            raise ValueError('Response["success"] is false.\n' + str(response))
+
+        for data in response['data']:
+            store_name = data['name']
+            store_id = data['value']
+            self.stores.append(Store(store_id, store_name))
+
+    def logout(self) -> LoginStatus:
+        response = self.session.get(URL.LOGOUT_API)
+        if response.status_code == 200:
+            self.session.close()
+            self._start_new_session()
+            success = True
+            message = 'Logout successfully'
+        else:
+            success = False
+            message = f'Logout failed with HTTP error: HTTP status code is {response.status_code}'
+        return LoginStatus(success, message)
+
+    def _search_items_from_api(self, keyword, api):
+        n_items_per_page = 100
+        params = {
+            'qv': keyword,
+            'start': 0,
+            'limit': n_items_per_page,
+        }
+        response = self.session.get(api, params=params).json()
+        if not response['success']:
+            raise ValueError('Response["success"] is false.\n' + str(response))
+        items = response['data']
+        start_idx = 0
+        while start_idx + response['count'] < response['total']:
+            start_idx += n_items_per_page
+            params['start'] = start_idx
+            response = self.session.get(api, params=params).json()
+            if not response['success']:
+                raise ValueError('Response["success"] is false.\n' + str(response))
+
+            items += response['data']
+        return items
+
+    def _take_items_offline_by_search(self, action_row: ActionRowV2):
+        items = self._search_items_from_api(action_row.keyword, URL.GET_ITEMS_API)
+
+        plu_codes = [item['PLUCode'] for item in items]
+        payload = {
+            'PLUCode': plu_codes,
+            'CustomReason': action_row.reason if action_row.reason else 'Deleted by t4auto',
+            'Reason': 'Custom',
+            'StoreID': [action_row.store_id],
+        }
+        response = self.session.post(URL.UPDATE_ITEMS_API, data=payload).json()
+        if not response['success']:
+            raise ValueError('Response["success"] is false.\n' + str(response))
+        logging.info(f'{action_row.keyword} is offline, total {len(items)} items.')
+
+    def _take_items_online_by_search(self, action_row: ActionRowV2):
+        items = self._search_items_from_api(action_row.keyword, URL.UPDATE_ITEMS_API)
+
+        item_ids = [item['ID'] for item in items]
+        payload = {
+            'IDs': item_ids,
+        }
+        response = self.session.delete(URL.UPDATE_ITEMS_API, data=payload).json()
+        if not response['success']:
+            raise ValueError('Response["success"] is false.\n' + str(response))
+        logging.info(f'{action_row.keyword} is online, total {len(items)} items.')
+
+    def start_scheduler(self, actions: list[ActionRowV2]):
+        time_set = set()
+        for action in actions:
+            if action.action_type == ActionType.START:
+                func = self._take_items_offline_by_search
+            else:
+                func = self._take_items_online_by_search
+
+            action_time = action.action_time
+            while action_time in time_set:
+                action_time += datetime.timedelta(seconds=30)
+            time_set.add(action_time)
+
+            self._scheduler.add_job(
+                func,
+                'interval',
+                args=(action,),
+                days=1,
+                start_date=action_time,
+            )
+        self._scheduler.start()
+
+    def stop_scheduler(self):
+        self._scheduler.pause()
+        self._scheduler.remove_all_jobs()
