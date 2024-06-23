@@ -391,5 +391,4 @@ class AgentV2:
         self._scheduler.start()
 
     def stop_scheduler(self):
-        self._scheduler.pause()
         self._scheduler.remove_all_jobs()
