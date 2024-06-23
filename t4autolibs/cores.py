@@ -10,19 +10,6 @@ import requests
 from apscheduler.schedulers.qt import QtScheduler
 
 
-def initialize_module_logger():
-    _module_logger = logging.getLogger('t4autolibs.cores')
-    _module_logger.setLevel(logging.DEBUG)
-    fh = logging.FileHandler('t4auto.log')
-    formatter = logging.Formatter('[%(asctime)s] %(name)s (%(levelname)s): %(message)s')
-    fh.setFormatter(formatter)
-    _module_logger.addHandler(fh)
-    return _module_logger
-
-
-module_logger = initialize_module_logger()
-
-
 @dataclass
 class URL:
     LOGIN_API = 'https://t4australia.redcatcloud.com.au/api/v1/login'
