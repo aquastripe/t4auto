@@ -1,11 +1,26 @@
 import datetime
 import logging
+import random
+import time
 from dataclasses import dataclass
 from enum import IntEnum
 from threading import Event
 
 import requests
 from apscheduler.schedulers.qt import QtScheduler
+
+
+def initialize_module_logger():
+    _module_logger = logging.getLogger('t4autolibs.cores')
+    _module_logger.setLevel(logging.DEBUG)
+    fh = logging.FileHandler('t4auto.log')
+    formatter = logging.Formatter('[%(asctime)s] %(name)s (%(levelname)s): %(message)s')
+    fh.setFormatter(formatter)
+    _module_logger.addHandler(fh)
+    return _module_logger
+
+
+module_logger = initialize_module_logger()
 
 
 @dataclass
@@ -197,18 +212,39 @@ class Agent:
             self.stores.append(Store(store_id, store_name))
 
 
+def random_sleep(min_sec=1, max_sec=60):
+    time.sleep(random.randint(min_sec, max_sec))
+
+
 class AgentV2:
 
     def __init__(self):
         self.stores = []
+        self._initialize_class_logger()
         self._start_new_session()
         self._scheduler = QtScheduler()
+
+    def _initialize_class_logger(self):
+        self.class_logger = logging.getLogger('t4auto')
+
+        formatter = logging.Formatter('[%(asctime)s] %(name)s (%(levelname)s): %(message)s',
+                                      '%Y-%m-%d %H:%M:%S')
+        fh = logging.FileHandler('t4auto log.txt')
+        fh.setLevel(logging.DEBUG)
+        fh.setFormatter(formatter)
+        self.class_logger.addHandler(fh)
+
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.INFO)
+        ch.setFormatter(formatter)
+        self.class_logger.addHandler(ch)
 
     def _start_new_session(self):
         self.session = requests.session()
         self.session.headers['User-Agent'] = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                                               'AppleWebKit/537.36 (KHTML, like Gecko) '
                                               'Chrome/124.0.0.0 Safari/537.36')
+        self.class_logger.debug('_start_new_session()')
 
     def login(self, user_info: UserInfo) -> LoginStatus:
         data = {
@@ -231,6 +267,8 @@ class AgentV2:
         else:
             success = False
             message = f'Login failed with HTTP error: HTTP status code is {response.status_code}'
+
+        self.class_logger.info(f'{message}')
         return LoginStatus(success, message)
 
     def _get_store_ids(self):
@@ -242,6 +280,7 @@ class AgentV2:
             store_name = data['name']
             store_id = data['value']
             self.stores.append(Store(store_id, store_name))
+        self.class_logger.debug(f'_get_store_ids() -> {self.stores}')
 
     def logout(self) -> LoginStatus:
         response = self.session.get(URL.LOGOUT_API)
@@ -253,9 +292,11 @@ class AgentV2:
         else:
             success = False
             message = f'Logout failed with HTTP error: HTTP status code is {response.status_code}'
+        self.class_logger.info(f'{message}')
         return LoginStatus(success, message)
 
     def _search_items_from_api(self, keyword, api):
+        random_sleep()
         n_items_per_page = 100
         params = {
             'qv': keyword,
@@ -264,7 +305,10 @@ class AgentV2:
         }
         response = self.session.get(api, params=params).json()
         if not response['success']:
-            raise ValueError('Response["success"] is false.\n' + str(response))
+            self.class_logger.error(f'Searching items was failed.')
+            self.class_logger.debug(f'GET {api} with params {params} -> {response}')
+            return None
+
         items = response['data']
         start_idx = 0
         while start_idx + response['count'] < response['total']:
@@ -272,13 +316,24 @@ class AgentV2:
             params['start'] = start_idx
             response = self.session.get(api, params=params).json()
             if not response['success']:
-                raise ValueError('Response["success"] is false.\n' + str(response))
-
+                self.class_logger.error(f'Searching items was failed.')
+                self.class_logger.debug(f'GET {api} with params {params} -> {response}')
+                return None
             items += response['data']
         return items
 
     def _take_items_offline_by_search(self, action_row: ActionRowV2):
         items = self._search_items_from_api(action_row.keyword, URL.GET_ITEMS_API)
+        random_sleep()
+        self.class_logger.info(f'Taking items offline with the keyword: {action_row.keyword}.')
+        if items:
+            self.class_logger.info('The following items were searched:')
+            for item in items:
+                self.class_logger.debug(f'\tPLUCode: {item["PLUCode"]}')
+                self.class_logger.info(f'\t{item["LongName"]}')
+        else:
+            self.class_logger.info('No items were searched. Skipped.')
+            return
 
         plu_codes = [item['PLUCode'] for item in items]
         payload = {
@@ -288,21 +343,35 @@ class AgentV2:
             'StoreID': [action_row.store_id],
         }
         response = self.session.post(URL.UPDATE_ITEMS_API, data=payload).json()
-        if not response['success']:
-            raise ValueError('Response["success"] is false.\n' + str(response))
-        logging.info(f'{action_row.keyword} is offline, total {len(items)} items.')
+        if response['success']:
+            self.class_logger.info(f'The items were offline, total {len(items)} items.')
+        else:
+            self.class_logger.error(f'Taking items offline was failed: the items were not offline.')
+            self.class_logger.debug(f'Failed: response["success"] was false.\n{response}')
 
     def _take_items_online_by_search(self, action_row: ActionRowV2):
         items = self._search_items_from_api(action_row.keyword, URL.UPDATE_ITEMS_API)
+        random_sleep()
+        self.class_logger.info(f'Restoring items online with the keyword: {action_row.keyword}.')
+        if items:
+            self.class_logger.info('The following items were searched:')
+            for item in items:
+                self.class_logger.debug(f'\tID: {item["ID"]}')
+                self.class_logger.info(f'\t{item["LongName"]}')
+        else:
+            self.class_logger.info('No items were searched. Skipped.')
+            return
 
         item_ids = [item['ID'] for item in items]
         payload = {
             'IDs': item_ids,
         }
         response = self.session.delete(URL.UPDATE_ITEMS_API, data=payload).json()
-        if not response['success']:
-            raise ValueError('Response["success"] is false.\n' + str(response))
-        logging.info(f'{action_row.keyword} is online, total {len(items)} items.')
+        if response['success']:
+            self.class_logger.info(f'The items were online, total {len(items)} items.')
+        else:
+            self.class_logger.error(f'Restoring items online was failed: the items were not online.')
+            self.class_logger.debug(f'Failed: response["success"] was false.\n{response}')
 
     def start_scheduler(self, actions: list[ActionRowV2]):
         time_set = set()
@@ -324,6 +393,14 @@ class AgentV2:
                 days=1,
                 start_date=action_time,
             )
+            self.class_logger.info(f'Add in the scheduler:')
+            if action.action_type == ActionType.START:
+                self.class_logger.info(f'\taction: taking items offline')
+            else:
+                self.class_logger.info(f'\taction: restoring items online')
+            self.class_logger.info(f'\tkeyword: {action.keyword}')
+            self.class_logger.info(f'\tstart time: {action_time.strftime('%Y-%m-%d %H:%M:%S')}')
+
         self._scheduler.start()
 
     def stop_scheduler(self):

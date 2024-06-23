@@ -2,14 +2,14 @@ from PySide6 import QtGui
 from PySide6.QtCore import Slot, Qt
 from PySide6.QtWidgets import QFormLayout, QGroupBox, QLineEdit, QHBoxLayout, QCheckBox, QPushButton, QLabel
 
-from t4autolibs.cores import UserInfo, LoginStatus, Agent
-from t4autolibs.gui.item_table import ItemTable
+from t4autolibs.cores import UserInfo, LoginStatus, AgentV2
 from t4autolibs.gui.agent_status import AgentStatus
+from t4autolibs.gui.item_table import ItemTable
 
 
 class Login:
 
-    def __init__(self, agent: Agent, item_table: ItemTable, agent_status: AgentStatus):
+    def __init__(self, agent: AgentV2, item_table: ItemTable, agent_status: AgentStatus):
         self.agent = agent
         self.item_table = item_table
         self.agent_status = agent_status
