@@ -213,6 +213,7 @@ class AgentV2:
 
     def _initialize_class_logger(self):
         self.class_logger = logging.getLogger('t4auto')
+        self.class_logger.setLevel(logging.DEBUG)
 
         formatter = logging.Formatter('[%(asctime)s] %(name)s (%(levelname)s): %(message)s',
                                       '%Y-%m-%d %H:%M:%S')
