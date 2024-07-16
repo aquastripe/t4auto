@@ -86,6 +86,9 @@ class Login:
     def set_logout_state(self):
         self.login_button.setEnabled(True)
         self.logout_button.setEnabled(False)
+        self.username_edit.setEnabled(True)
+        self.password_edit.setEnabled(True)
+        self.display_password.setEnabled(True)
 
         self.item_table.set_initial_state()
         self.agent_status.set_not_logged_in_status()
@@ -93,6 +96,9 @@ class Login:
     def set_login_state(self):
         self.login_button.setEnabled(False)
         self.logout_button.setEnabled(True)
+        self.username_edit.setEnabled(False)
+        self.password_edit.setEnabled(False)
+        self.display_password.setEnabled(False)
 
         self.item_table.set_ready_state()
         self.agent_status.set_logged_in_status()
