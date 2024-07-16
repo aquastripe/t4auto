@@ -289,8 +289,11 @@ class AgentV2:
         }
         response = self.session.get(api, params=params).json()
         if not response['success']:
-            self.class_logger.error(f'Searching items was failed.')
-            self.class_logger.debug(f'GET {api} with params {params} -> {response}')
+            self.class_logger.error(f'Failed to search items.')
+            self.class_logger.debug(f'GET {api} with params:')
+            self.class_logger.debug(f'\t{params}')
+            self.class_logger.debug(f'Response:')
+            self.class_logger.debug(f'\t{response}')
             return None
 
         items = response['data']
@@ -300,20 +303,23 @@ class AgentV2:
             params['start'] = start_idx
             response = self.session.get(api, params=params).json()
             if not response['success']:
-                self.class_logger.error(f'Searching items was failed.')
-                self.class_logger.debug(f'GET {api} with params {params} -> {response}')
+                self.class_logger.error(f'Failed to search items.')
+                self.class_logger.debug(f'GET {api} with params:')
+                self.class_logger.debug(f'\t{params}')
+                self.class_logger.debug(f'Response:')
+                self.class_logger.debug(f'\t{response}')
                 return None
             items += response['data']
         return items
 
     def _take_items_offline_by_search(self, action_row: ActionRowV2):
         items = self._search_items_from_api(action_row.keyword, URL.GET_ITEMS_API)
-        self.class_logger.info(f'Taking items offline with the keyword: {action_row.keyword}.')
+        self.class_logger.info(f'Taking items offline with the keyword: {action_row.keyword}')
         if items:
             self.class_logger.info('The following items were searched:')
             for item in items:
-                self.class_logger.debug(f'\tPLUCode: {item["PLUCode"]}')
-                self.class_logger.info(f'\t{item["LongName"]}')
+                self.class_logger.debug(f'\t* PLU code: {item["PLUCode"]}')
+                self.class_logger.info(f'\t* Online name: {item["LongName"]}')
         else:
             self.class_logger.info('No items were searched. Skipped.')
             return
@@ -329,17 +335,18 @@ class AgentV2:
         if response['success']:
             self.class_logger.info(f'The items were offline, total {len(items)} items.')
         else:
-            self.class_logger.error(f'Taking items offline was failed: the items were not offline.')
-            self.class_logger.debug(f'Failed: response["success"] was false.\n{response}')
+            self.class_logger.error(f'Failed to take items offline.')
+            self.class_logger.debug(f'response["success"] == False')
+            self.class_logger.debug(f'response: {response}')
 
     def _take_items_online_by_search(self, action_row: ActionRowV2):
         items = self._search_items_from_api(action_row.keyword, URL.UPDATE_ITEMS_API)
-        self.class_logger.info(f'Restoring items online with the keyword: {action_row.keyword}.')
+        self.class_logger.info(f'Taking items online with the keyword: {action_row.keyword}')
         if items:
             self.class_logger.info('The following items were searched:')
             for item in items:
-                self.class_logger.debug(f'\tID: {item["ID"]}')
-                self.class_logger.info(f'\t{item["LongName"]}')
+                self.class_logger.debug(f'\t* ID: {item["ID"]}')
+                self.class_logger.info(f'\t* Online name: {item["LongName"]}')
         else:
             self.class_logger.info('No items were searched. Skipped.')
             return
@@ -352,8 +359,9 @@ class AgentV2:
         if response['success']:
             self.class_logger.info(f'The items were online, total {len(items)} items.')
         else:
-            self.class_logger.error(f'Restoring items online was failed: the items were not online.')
-            self.class_logger.debug(f'Failed: response["success"] was false.\n{response}')
+            self.class_logger.error(f'Failed to take items online.')
+            self.class_logger.debug(f'response["success"] == False')
+            self.class_logger.debug(f'response: {response}')
 
     def start_scheduler(self, actions: list[ActionRowV2]):
         time_set = set()
@@ -375,13 +383,14 @@ class AgentV2:
                 days=1,
                 start_date=action_time,
             )
-            self.class_logger.info(f'Add in the scheduler:')
+            self.class_logger.info(f'Added in the scheduler:')
             if action.action_type == ActionType.START:
-                self.class_logger.info(f'\taction: taking items offline')
+                self.class_logger.info(f'\t* Action: taking items offline')
             else:
-                self.class_logger.info(f'\taction: restoring items online')
-            self.class_logger.info(f'\tkeyword: {action.keyword}')
-            self.class_logger.info(f'\tstart time: {action_time.strftime('%Y-%m-%d %H:%M:%S')}')
+                self.class_logger.info(f'\t* Action: taking items online')
+            self.class_logger.info(f'\t* Keyword: {action.keyword}')
+            self.class_logger.info(f'\t* Start time: {action_time.strftime('%Y-%m-%d %H:%M:%S')}')
 
     def stop_scheduler(self):
         self._scheduler.remove_all_jobs()
+        self.class_logger.info('The scheduler stopped.')
