@@ -12,7 +12,7 @@ from t4autolibs.cores import ActionRowV2, ActionType, Store, AgentV2
 from t4autolibs.gui.agent_status import AgentStatus
 from t4autolibs.gui.config import Configurable
 
-COLUMN_NAMES = ['Location', 'Search item by keyword', 'Start time', 'End time', 'Reason', 'Delete the row']
+COLUMN_NAMES = ['Location', 'Search items by keyword', 'Offline time', 'Online time', 'Reason', 'Delete the row']
 
 
 class ColumnIdx(IntEnum):
