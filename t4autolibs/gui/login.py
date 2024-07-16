@@ -63,11 +63,11 @@ class Login:
     @Slot()
     def login(self):
         if not self._is_logged_in:
-            self._is_logged_in = True
             user_info = UserInfo(self.username_edit.text(), self.password_edit.text())
             login_status = self.agent.login(user_info)  # type: LoginStatus
 
             if login_status.success:
+                self._is_logged_in = True
                 self.set_login_state()
                 self.login_message.setStyleSheet('color: green')
             else:
@@ -80,8 +80,15 @@ class Login:
     def logout(self):
         self.set_logout_state()
         if self._is_logged_in:
-            self._is_logged_in = False
-            self.agent.logout()
+            login_status = self.agent.logout()  # type:LoginStatus
+
+            if login_status.success:
+                self._is_logged_in = False
+                self.set_logout_state()
+                self.login_message.setStyleSheet('color: green')
+            else:
+                self.login_message.setStyleSheet('color: red')
+            self.login_message.setText(login_status.message)
 
     def set_logout_state(self):
         self.login_button.setEnabled(True)
