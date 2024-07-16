@@ -1,13 +1,13 @@
 import datetime
 import logging
-import random
-import time
 from dataclasses import dataclass
 from enum import IntEnum
 from threading import Event
 
 import requests
 from apscheduler.schedulers.qt import QtScheduler
+
+SECONDS_REQUEST_INTERVAL = 10
 
 
 @dataclass
@@ -365,7 +365,7 @@ class AgentV2:
 
             action_time = action.action_time
             while action_time in time_set:
-                action_time += datetime.timedelta(seconds=30)
+                action_time += datetime.timedelta(seconds=SECONDS_REQUEST_INTERVAL)
             time_set.add(action_time)
 
             self._scheduler.add_job(
