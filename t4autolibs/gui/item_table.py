@@ -81,7 +81,6 @@ class ItemTable(Configurable):
         self.add_row_button.setEnabled(False)
         self.start_automation_button.setEnabled(False)
         self.stop_automation_button.setEnabled(True)
-        self.agent_status.set_running_status()
 
     def show_location(self, row, column):
         if column != 0:
@@ -157,22 +156,17 @@ class ItemTable(Configurable):
 
     @Slot()
     def start_automation(self):
-        self.start_automation_button.setEnabled(False)
-        self.stop_automation_button.setEnabled(True)
-        self.agent_status.set_running_status()
-
         action_row_list = self.collect_action_rows_from_table()
         if len(action_row_list) > 0:
+            self.set_running_state()
+            self.agent_status.set_running_status()
             self.agent.start_scheduler(action_row_list)
         else:
-            self.start_automation_button.setEnabled(True)
-            self.stop_automation_button.setEnabled(False)
-            self.agent_status.set_logged_in_status()
+            self.set_ready_state()
 
     @Slot()
     def stop_automation(self):
-        self.start_automation_button.setEnabled(True)
-        self.stop_automation_button.setEnabled(False)
+        self.set_ready_state()
         self.agent_status.set_logged_in_status()
         self.agent.stop_scheduler()
 
