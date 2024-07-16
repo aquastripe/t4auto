@@ -199,10 +199,6 @@ class Agent:
             self.stores.append(Store(store_id, store_name))
 
 
-def random_sleep(min_sec=1, max_sec=60):
-    time.sleep(random.randint(min_sec, max_sec))
-
-
 class AgentV2:
 
     def __init__(self):
@@ -210,6 +206,7 @@ class AgentV2:
         self._initialize_class_logger()
         self._start_new_session()
         self._scheduler = QtScheduler()
+        self._scheduler.start()
 
     def _initialize_class_logger(self):
         self.class_logger = logging.getLogger('t4auto')
@@ -284,7 +281,6 @@ class AgentV2:
         return LoginStatus(success, message)
 
     def _search_items_from_api(self, keyword, api):
-        random_sleep()
         n_items_per_page = 100
         params = {
             'qv': keyword,
@@ -312,7 +308,6 @@ class AgentV2:
 
     def _take_items_offline_by_search(self, action_row: ActionRowV2):
         items = self._search_items_from_api(action_row.keyword, URL.GET_ITEMS_API)
-        random_sleep()
         self.class_logger.info(f'Taking items offline with the keyword: {action_row.keyword}.')
         if items:
             self.class_logger.info('The following items were searched:')
@@ -339,7 +334,6 @@ class AgentV2:
 
     def _take_items_online_by_search(self, action_row: ActionRowV2):
         items = self._search_items_from_api(action_row.keyword, URL.UPDATE_ITEMS_API)
-        random_sleep()
         self.class_logger.info(f'Restoring items online with the keyword: {action_row.keyword}.')
         if items:
             self.class_logger.info('The following items were searched:')
@@ -388,8 +382,6 @@ class AgentV2:
                 self.class_logger.info(f'\taction: restoring items online')
             self.class_logger.info(f'\tkeyword: {action.keyword}')
             self.class_logger.info(f'\tstart time: {action_time.strftime('%Y-%m-%d %H:%M:%S')}')
-
-        self._scheduler.start()
 
     def stop_scheduler(self):
         self._scheduler.remove_all_jobs()
