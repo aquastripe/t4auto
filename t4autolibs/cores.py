@@ -214,7 +214,7 @@ class AgentV2:
 
         formatter = logging.Formatter('[%(asctime)s] %(name)s (%(levelname)s): %(message)s',
                                       '%Y-%m-%d %H:%M:%S')
-        fh = logging.FileHandler('t4auto log.txt')
+        fh = logging.FileHandler('t4auto_log.txt')
         fh.setLevel(logging.DEBUG)
         fh.setFormatter(formatter)
         self.class_logger.addHandler(fh)
