@@ -1,5 +1,6 @@
 import datetime
 from enum import IntEnum
+from functools import partial
 from typing import NoReturn
 
 from PySide6 import QtGui
@@ -87,10 +88,13 @@ class ItemTable(Configurable):
             return
 
         menu = QMenu()
+        action_list = []
         for store in self.agent.stores:
             action = QAction(store.name)
-            action.triggered.connect(lambda: self.edit_location(row, column, store))
-            menu.addAction(action)
+            action.triggered.connect(partial(self.edit_location, row, column, store))
+            action_list.append(action)
+
+        menu.addActions(action_list)
 
         cell_rect = self.table.visualItemRect(self.table.item(row, column))
         global_position = self.table.viewport().mapToGlobal(cell_rect.bottomLeft())
